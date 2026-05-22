@@ -12,16 +12,15 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
     DB_NAME     = os.environ.get('DB_NAME', 'chakki_db1')
 
-    # Use SQLite if USE_SQLITE=1 env var set (dev fallback)
-    _use_sqlite = os.environ.get('USE_SQLITE', '0') == '1'
-    if _use_sqlite:
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///chakki_dev.db'
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+
+    if DATABASE_URL:
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
         SQLALCHEMY_DATABASE_URI = (
             f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
             "?charset=utf8mb4"
         )
-
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_recycle': 299,
