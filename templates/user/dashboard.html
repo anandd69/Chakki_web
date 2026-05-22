@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}My Account – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:3rem 0 5rem">
+
+  <!-- Page header -->
+  <div class="addr-page-header" style="margin-bottom:2rem">
+    <h1 class="page-title" style="margin-bottom:0">My Account</h1>
+    <a href="{{ url_for('auth.logout') }}" class="btn-outline-dark" style="font-size:0.85rem;padding:0.55rem 1.2rem">
+      Logout
+    </a>
+  </div>
+
+  <!-- Profile card -->
+  <div class="ck-section" style="max-width:700px;margin-bottom:2rem">
+    <div class="ck-section-head" style="margin-bottom:1rem">
+      <span class="ck-section-num">👤</span>
+      <h3 class="ck-section-title">Welcome, {{ user.full_name }}!</h3>
+    </div>
+    <div class="account-info-row">
+      <div class="ai-field">
+        <span class="ai-label">Email</span>
+        <span class="ai-value">{{ user.email }}</span>
+      </div>
+      <div class="ai-field">
+        <span class="ai-label">Phone</span>
+        <span class="ai-value">
+          {% if user.phone %}{{ user.phone }}
+          {% else %}<span style="color:#e74c3c;font-size:0.85rem">Not set</span>{% endif %}
+        </span>
+      </div>
+      <div class="ai-field">
+        <span class="ai-label">Member Since</span>
+        <span class="ai-value">{{ user.created_at | ist_date }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:2.5rem">
+    <a href="{{ url_for('user.addresses_page') }}" class="ck-quick-link">
+      📍 My Addresses
+      {% if addresses %}<span class="ck-quick-badge">{{ addresses|length }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('shop.products') }}" class="ck-quick-link">🌾 Shop Products</a>
+    <a href="{{ url_for('shop.track_order') }}" class="ck-quick-link">🚚 Track Order</a>
+  </div>
+
+  <!-- ── RECENT ORDERS ─────────────────────────────────── -->
+  <h2 class="ck-section-subtitle">Recent Orders</h2>
+
+  {% if orders %}
+  <div class="ck-orders-list">
+    {% for order in orders %}
+    <div class="ck-order-row">
+      <div class="ck-order-info">
+        <a href="{{ url_for('user.order_detail', order_number=order.order_number) }}" class="ck-order-num">
+          Order #{{ order.order_number }}
+        </a>
+        <p class="ck-order-date">{{ order.created_at | ist_month }}</p>
+        <p class="ck-order-meta">{{ order.items|length }} item(s) &nbsp;·&nbsp; ₹{{ order.total_amount }}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:1rem;flex-shrink:0">
+        <span class="ck-status-pill" style="background:{{ order.status_color }}">{{ order.status }}</span>
+        <a href="{{ url_for('user.order_detail', order_number=order.order_number) }}" class="ck-link" style="font-size:0.85rem;font-weight:600">Details →</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="addr-empty-state" style="padding:3rem 1.5rem">
+    <div class="addr-empty-icon">📦</div>
+    <h3 class="addr-empty-title">No orders yet</h3>
+    <p class="addr-empty-sub">Start shopping and your orders will appear here.</p>
+    <a href="{{ url_for('shop.products') }}" class="btn-primary" style="display:inline-block;margin-top:1.5rem;text-decoration:none">
+      Start Shopping
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+{% block title %}Checkout – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:3rem 0 5rem">
+  <h1 class="page-title">
+    {% if single_mode %}Buy Now{% else %}Checkout{% endif %}
+  </h1>
+  {% if single_mode %}
+  <p style="color:var(--gray);font-size:0.88rem;margin-top:-0.5rem;margin-bottom:1.5rem">
+    Ordering this item only — your cart is untouched.
+  </p>
+  {% endif %}
+
+  <div class="checkout-layout">
+
+    <!-- ═══ LEFT: FORM ═══════════════════════════════════ -->
+    <div class="checkout-form">
+
+      <!-- 1. YOUR DETAILS -->
+      <div class="ck-section">
+        <div class="ck-section-head">
+          <span class="ck-section-num">1</span>
+          <h3 class="ck-section-title">Your Details</h3>
+        </div>
+        <div class="account-info-row">
+          <div class="ai-field">
+            <span class="ai-label">Name</span>
+            <span class="ai-value">{{ user.full_name or '—' }}</span>
+          </div>
+          <div class="ai-field">
+            <span class="ai-label">Email</span>
+            <span class="ai-value">{{ user.email }}</span>
+          </div>
+          <div class="ai-field">
+            <span class="ai-label">Phone</span>
+            <span class="ai-value">
+              {% if user.phone %}{{ user.phone }}
+              {% else %}<span style="color:#e74c3c;font-size:0.85rem">Not set</span>{% endif %}
+            </span>
+          </div>
+        </div>
+        {% if not user.phone %}
+        <div class="form-group" style="margin-top:1rem;max-width:320px">
+          <label>Mobile Number <span class="req">*</span></label>
+          <input type="tel" id="phoneInput" placeholder="10-digit mobile number" maxlength="10">
+          <span class="field-error" id="err-phone"></span>
+          <p class="ck-hint">Save phone to your <a href="{{ url_for('user.dashboard') }}" class="ck-link">account</a> to skip this next time.</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- 2. DELIVERY ADDRESS -->
+      <div class="ck-section">
+        <div class="ck-section-head">
+          <span class="ck-section-num">2</span>
+          <h3 class="ck-section-title">Delivery Address</h3>
+          <button type="button" class="ck-add-addr-btn" onclick="openAddrModal()">+ Add New</button>
+        </div>
+
+        {% if saved_addresses %}
+        <div id="savedAddrList">
+          {% for addr in saved_addresses %}
+          <label class="ck-addr-card{% if addr.is_default %} ck-addr-card--active{% elif loop.first and not saved_addresses|selectattr('is_default')|list %} ck-addr-card--active{% endif %}"
+                 data-id="{{ addr.id }}" id="addrCard{{ addr.id }}">
+            <input type="radio" name="selected_address" value="{{ addr.id }}"
+                   class="ck-addr-radio"
+                   {% if addr.is_default %}checked
+                   {% elif loop.first and not saved_addresses|selectattr('is_default')|list %}checked{% endif %}
+                   onchange="onAddrSelect({{ addr.id }})">
+            <div class="ck-addr-body">
+              <div class="ck-addr-meta">
+                {% if addr.label %}<span class="ck-addr-label">{{ addr.label }}</span>{% endif %}
+                <strong class="ck-addr-name">{{ addr.full_name }}</strong>
+                <span class="ck-addr-phone">{{ addr.phone }}</span>
+                {% if addr.is_default %}<span class="ck-addr-default-tag">Default</span>{% endif %}
+              </div>
+              <p class="ck-addr-text">{{ addr.address_line }}{% if addr.city %}, {{ addr.city }}{% endif %}{% if addr.pincode %} – {{ addr.pincode }}{% endif %}</p>
+            </div>
+            <div class="ck-addr-actions">
+              <button type="button" class="ck-addr-act" onclick="editAddr({{ addr.id }}, event)">Edit</button>
+              <button type="button" class="ck-addr-act ck-addr-act--del" onclick="removeAddr({{ addr.id }}, event)">Remove</button>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div style="margin-top:0.9rem">
+          <button type="button" class="ck-manual-toggle" id="manualToggle" onclick="toggleManual()">
+            <span id="manualArrow">▸</span> Use a different address
+          </button>
+        </div>
+        <div id="manualBlock" style="display:none;margin-top:1rem">
+          <div class="form-group">
+            <label>Full Address <span class="req">*</span></label>
+            <textarea id="addrLine" rows="3" placeholder="House/Flat no., Street, Area, Landmark"></textarea>
+            <span class="field-error" id="err-address"></span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>City</label>
+              <input type="text" id="addrCity" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label>PIN Code</label>
+              <input type="text" id="addrPincode" placeholder="6-digit PIN" maxlength="6">
+              <span class="field-error" id="err-pincode"></span>
+            </div>
+          </div>
+          <label class="ck-checkbox-label">
+            <input type="checkbox" id="saveManualAddr" style="accent-color:var(--green)">
+            Save this address to my account
+          </label>
+        </div>
+
+        {% else %}
+        <div id="manualBlock">
+          <div class="form-group">
+            <label>Full Address <span class="req">*</span></label>
+            <textarea id="addrLine" rows="3" placeholder="House/Flat no., Street, Area, Landmark"></textarea>
+            <span class="field-error" id="err-address"></span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>City</label>
+              <input type="text" id="addrCity" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label>PIN Code</label>
+              <input type="text" id="addrPincode" placeholder="6-digit PIN" maxlength="6">
+              <span class="field-error" id="err-pincode"></span>
+            </div>
+          </div>
+          <label class="ck-checkbox-label">
+            <input type="checkbox" id="saveManualAddr" checked style="accent-color:var(--green)">
+            Save this address to my account
+          </label>
+        </div>
+        {% endif %}
+
+        <div class="form-group" style="margin-top:1.2rem">
+          <label>Order Notes <span class="ck-optional">(optional)</span></label>
+          <textarea id="orderNotes" rows="2" placeholder="Any special delivery instructions?"></textarea>
+        </div>
+        <span class="field-error" id="err-general" style="display:block;margin-top:0.25rem"></span>
+      </div>
+
+      <!-- 3. PAYMENT -->
+      <div class="ck-section">
+        <div class="ck-section-head">
+          <span class="ck-section-num">3</span>
+          <h3 class="ck-section-title">Payment Method</h3>
+        </div>
+        <label class="radio-label">
+          <input type="radio" name="payment" value="COD" checked>
+          <span>💵 Cash on Delivery</span>
+        </label>
+      </div>
+
+    </div><!-- /checkout-form -->
+
+    <!-- ═══ RIGHT: SUMMARY ════════════════════════════════ -->
+    <div class="cart-summary">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:1.5rem">Order Summary</h3>
+      {% for item in cart_items %}
+      <div class="summary-item">
+        <span>{{ item.emoji }} {{ item.name }} ({{ item.size }}) × {{ item.qty }}</span>
+        <span>₹{{ (item.qty * item.price)|int }}</span>
+      </div>
+      {% endfor %}
+      <div class="summary-row"><span>Subtotal</span><span>₹{{ subtotal|int }}</span></div>
+      <div class="summary-row">
+        <span>Delivery</span>
+        <span>{% if delivery_charge > 0 %}₹{{ delivery_charge|int }}{% else %}<span class="free-tag">FREE</span>{% endif %}</span>
+      </div>
+      <div class="summary-total"><span>Total</span><span>₹{{ grand_total|int }}</span></div>
+      <button class="btn-primary full-w" id="placeOrderBtn" onclick="submitOrder()">
+        {% if single_mode %}Place Order →{% else %}Place Order →{% endif %}
+      </button>
+      {% if single_mode %}
+      <a href="{{ url_for('shop.cart') }}" class="continue-link">← Back to Cart</a>
+      {% else %}
+      <a href="{{ url_for('shop.cart') }}" class="continue-link">← Back to Cart</a>
+      {% endif %}
+    </div>
+
+  </div><!-- /checkout-layout -->
+</div>
+
+<!-- ADDRESS MODAL -->
+<div id="addrModalBg" class="addr-modal-overlay" style="display:none" onclick="bgClose(event)">
+  <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="addrModalHeading" onclick="event.stopPropagation()">
+    <div class="addr-modal-header">
+      <h3 id="addrModalHeading" class="addr-modal-title">Add New Address</h3>
+      <button type="button" class="addr-modal-close" onclick="closeAddrModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="addr-modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Label <span class="ck-optional">(Home, Office…)</span></label>
+          <input type="text" id="mLabel" placeholder="Home" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Recipient Name <span class="req">*</span></label>
+          <input type="text" id="mName" placeholder="Full name">
+          <span class="field-error" id="merr-full_name"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="mPhone" placeholder="10-digit mobile" maxlength="10">
+        <span class="field-error" id="merr-phone"></span>
+      </div>
+      <div class="form-group">
+        <label>Full Address <span class="req">*</span></label>
+        <textarea id="mAddr" rows="3" placeholder="House/Flat no., Street, Area, Landmark"></textarea>
+        <span class="field-error" id="merr-address_line"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="mCity" placeholder="City">
+        </div>
+        <div class="form-group">
+          <label>PIN Code</label>
+          <input type="text" id="mPin" placeholder="6-digit PIN" maxlength="6">
+          <span class="field-error" id="merr-pincode"></span>
+        </div>
+      </div>
+      <label class="ck-checkbox-label" style="margin-top:0.6rem">
+        <input type="checkbox" id="mDefault" style="accent-color:var(--green)">
+        Set as default address
+      </label>
+    </div>
+    <div class="addr-modal-footer">
+      <button type="button" class="btn-outline-dark" onclick="closeAddrModal()">Cancel</button>
+      <button type="button" class="btn-primary btn-sm" id="mSaveBtn" onclick="saveAddrModal()">Save Address</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const _csrfToken  = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const _userPhone  = {{ (user.phone or '') | tojson }};
+const _userName   = {{ (user.full_name or '') | tojson }};
+const _hasSaved   = {{ 'true' if saved_addresses else 'false' }};
+const _singleMode = {{ 'true' if single_mode else 'false' }};
+let   _selAddrId  = null;
+let   _editAddrId = null;
+
+function apiHeaders() {
+  return { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken };
+}
+
+// Set initial selection from server-rendered default
+(function () {
+  const checked = document.querySelector('input[name="selected_address"]:checked');
+  if (checked) _selAddrId = parseInt(checked.value);
+})();
+
+function onAddrSelect(id) {
+  _selAddrId = id;
+  document.querySelectorAll('.ck-addr-card').forEach(c =>
+    c.classList.toggle('ck-addr-card--active', parseInt(c.dataset.id) === id));
+  const mb = document.getElementById('manualBlock');
+  if (mb && _hasSaved) mb.style.display = 'none';
+  const arr = document.getElementById('manualArrow');
+  if (arr) arr.textContent = '▸';
+}
+
+function toggleManual() {
+  const mb  = document.getElementById('manualBlock');
+  const arr = document.getElementById('manualArrow');
+  if (!mb) return;
+  const open = mb.style.display !== 'none';
+  mb.style.display = open ? 'none' : 'block';
+  if (arr) arr.textContent = open ? '▸' : '▾';
+  if (!open) {
+    _selAddrId = null;
+    document.querySelectorAll('input[name="selected_address"]').forEach(r => r.checked = false);
+    document.querySelectorAll('.ck-addr-card').forEach(c => c.classList.remove('ck-addr-card--active'));
+  }
+}
+
+function clearMErrors() {
+  document.querySelectorAll('[id^="merr-"]').forEach(el => el.textContent = '');
+}
+
+function openAddrModal() {
+  _editAddrId = null;
+  document.getElementById('addrModalHeading').textContent = 'Add New Address';
+  document.getElementById('mLabel').value    = '';
+  document.getElementById('mName').value     = _userName;
+  document.getElementById('mPhone').value    = _userPhone;
+  document.getElementById('mAddr').value     = '';
+  document.getElementById('mCity').value     = '';
+  document.getElementById('mPin').value      = '';
+  document.getElementById('mDefault').checked = !_hasSaved;
+  clearMErrors();
+  document.getElementById('addrModalBg').style.display = 'flex';
+  setTimeout(() => document.getElementById('mName').focus(), 60);
+}
+
+function editAddr(id, e) {
+  if (e) e.stopPropagation();
+  fetch('/user/addresses', { headers: apiHeaders() })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success) return;
+      const a = d.addresses.find(x => x.id === id);
+      if (!a) return;
+      _editAddrId = id;
+      document.getElementById('addrModalHeading').textContent = 'Edit Address';
+      document.getElementById('mLabel').value    = a.label    || '';
+      document.getElementById('mName').value     = a.full_name;
+      document.getElementById('mPhone').value    = a.phone;
+      document.getElementById('mAddr').value     = a.address_line;
+      document.getElementById('mCity').value     = a.city     || '';
+      document.getElementById('mPin').value      = a.pincode  || '';
+      document.getElementById('mDefault').checked = a.is_default;
+      clearMErrors();
+      document.getElementById('addrModalBg').style.display = 'flex';
+    })
+    .catch(() => showToast('Could not load address. Try again.', 'error'));
+}
+
+function closeAddrModal() {
+  document.getElementById('addrModalBg').style.display = 'none';
+}
+
+function bgClose(e) {
+  if (e.target === document.getElementById('addrModalBg')) closeAddrModal();
+}
+
+async function saveAddrModal() {
+  clearMErrors();
+  const btn = document.getElementById('mSaveBtn');
+  btn.textContent = 'Saving…';
+  btn.disabled    = true;
+
+  const payload = {
+    label:        document.getElementById('mLabel').value.trim(),
+    full_name:    document.getElementById('mName').value.trim(),
+    phone:        document.getElementById('mPhone').value.trim(),
+    address_line: document.getElementById('mAddr').value.trim(),
+    city:         document.getElementById('mCity').value.trim(),
+    pincode:      document.getElementById('mPin').value.trim(),
+    is_default:   document.getElementById('mDefault').checked ? 'true' : 'false',
+  };
+
+  const url    = _editAddrId ? `/user/addresses/${_editAddrId}` : '/user/addresses';
+  const method = _editAddrId ? 'PUT' : 'POST';
+
+  try {
+    const resp = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(payload) });
+    const data = await resp.json();
+    if (!data.success) {
+      if (data.errors) {
+        Object.entries(data.errors).forEach(([k, v]) => {
+          const el = document.getElementById('merr-' + k);
+          if (el) el.textContent = v;
+        });
+      } else {
+        showToast(data.message || 'Could not save address.', 'error');
+      }
+      btn.textContent = 'Save Address';
+      btn.disabled    = false;
+      return;
+    }
+    closeAddrModal();
+    showToast(_editAddrId ? 'Address updated!' : 'Address saved!', 'success');
+    setTimeout(() => location.reload(), 700);
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+    btn.textContent = 'Save Address';
+    btn.disabled    = false;
+  }
+}
+
+async function removeAddr(id, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('Remove this saved address?')) return;
+  try {
+    const resp = await fetch(`/user/addresses/${id}`, { method: 'DELETE', headers: apiHeaders() });
+    const data = await resp.json();
+    if (data.success) { showToast('Address removed.', 'info'); setTimeout(() => location.reload(), 600); }
+    else showToast(data.message || 'Could not remove. Try again.', 'error');
+  } catch { showToast('Network error. Please try again.', 'error'); }
+}
+
+// ── Place order ──────────────────────────────────────────
+async function submitOrder() {
+  const btn = document.getElementById('placeOrderBtn');
+  document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+
+  let address = '', city = '', pincode = '', name = _userName, phone = _userPhone;
+
+  const manualBlock   = document.getElementById('manualBlock');
+  const manualVisible = manualBlock && manualBlock.style.display !== 'none';
+
+  if (_hasSaved && _selAddrId && !manualVisible) {
+    try {
+      const r = await fetch('/user/addresses', { headers: apiHeaders() });
+      const d = await r.json();
+      const a = d.addresses.find(x => x.id === _selAddrId);
+      if (!a) { showToast('Please select a delivery address.', 'error'); return; }
+      address = a.address_line;
+      city    = a.city    || '';
+      pincode = a.pincode || '';
+      name    = a.full_name;
+      phone   = a.phone;
+    } catch {
+      showToast('Could not load address. Please try again.', 'error');
+      return;
+    }
+  } else {
+    const lineEl    = document.getElementById('addrLine');
+    const cityEl    = document.getElementById('addrCity');
+    const pincodeEl = document.getElementById('addrPincode');
+    address = lineEl    ? lineEl.value.trim()    : '';
+    city    = cityEl    ? cityEl.value.trim()    : '';
+    pincode = pincodeEl ? pincodeEl.value.trim() : '';
+    if (!phone) {
+      const phEl = document.getElementById('phoneInput');
+      if (phEl) phone = phEl.value.trim();
+    }
+    const saveChk = document.getElementById('saveManualAddr');
+    if (saveChk && saveChk.checked && address.length >= 10) {
+      await fetch('/user/addresses', {
+        method: 'POST', headers: apiHeaders(),
+        body: JSON.stringify({ full_name: name, phone, address_line: address, city, pincode, is_default: 'false' }),
+      }).catch(() => {});
+    }
+  }
+
+  const notes = (document.getElementById('orderNotes') || { value: '' }).value.trim();
+
+  btn.textContent = '⏳ Placing order…';
+  btn.disabled    = true;
+
+  try {
+    const resp = await fetch('/place-order', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({ address, city, pincode, notes, phone, name, single_mode: _singleMode }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Order placed! Redirecting…', 'success');
+      setTimeout(() => window.location.href = data.redirect, 900);
+    } else {
+      if (data.errors) {
+        Object.entries(data.errors).forEach(([k, v]) => {
+          const el = document.getElementById('err-' + k);
+          if (el) el.textContent = v;
+        });
+        showToast('Please fix the errors below.', 'error');
+      } else {
+        showToast(data.message || 'Order failed. Please try again.', 'error');
+      }
+      btn.textContent = 'Place Order →';
+      btn.disabled    = false;
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+    btn.textContent = 'Place Order →';
+    btn.disabled    = false;
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAddrModal(); });
+</script>
+{% endblock %}

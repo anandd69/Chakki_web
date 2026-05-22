@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Cart – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+{% block content %}
+<div class="container" style="padding:3rem 0 5rem">
+  <h1 class="page-title">Your Cart</h1>
+
+  {% if cart_items %}
+  <div class="cart-layout">
+    <!-- Cart Items -->
+    <div class="cart-items">
+      {% for item in cart_items %}
+      <div class="cart-item" id="ci-{{ item.variant_id }}">
+        <div class="ci-emoji">
+          {% if item.image_url %}
+          <img src="{{ item.image_url }}" alt="{{ item.name }}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">
+          {% else %}
+          {{ item.emoji }}
+          {% endif %}
+        </div>
+        <div class="ci-info">
+          <div class="ci-name">{{ item.name }}</div>
+          <div class="ci-size">{{ item.size }}</div>
+        </div>
+        <div class="ci-qty">
+          <button onclick="changeQty({{ item.variant_id }}, -1, {{ item.price }})">−</button>
+          <span id="qty-{{ item.variant_id }}">{{ item.qty }}</span>
+          <button onclick="changeQty({{ item.variant_id }}, +1, {{ item.price }})">+</button>
+        </div>
+        <div class="ci-price" id="price-{{ item.variant_id }}">₹{{ (item.qty * item.price) | int }}</div>
+        <!-- Buy Now for this single item -->
+        <button class="ci-buy-now"
+                onclick="buyNowFromCart({{ item.variant_id }}, {{ item.qty }})"
+                title="Buy this item now">
+          ⚡
+        </button>
+        <button class="ci-remove" onclick="removeItem({{ item.variant_id }})" title="Remove">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Order Summary -->
+    <div class="cart-summary">
+      <h3>Order Summary</h3>
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <span id="sumSubtotal">₹{{ subtotal | int }}</span>
+      </div>
+      <div class="summary-row">
+        <span>Delivery</span>
+        <span id="sumDelivery">{% if delivery_charge > 0 %}₹{{ delivery_charge | int }}{% else %}FREE{% endif %}</span>
+      </div>
+      {% if subtotal < free_delivery_above %}
+      <div class="free-del-hint" id="freeDelHint">
+        Add ₹{{ (free_delivery_above - subtotal) | int }} more for free delivery!
+      </div>
+      {% endif %}
+      <div class="summary-total">
+        <span>Total</span>
+        <span id="sumTotal">₹{{ grand_total | int }}</span>
+      </div>
+      <a href="{{ url_for('shop.checkout') }}" class="btn-primary full-w">
+        Proceed to Checkout →
+      </a>
+      <a href="{{ url_for('shop.products') }}" class="continue-link">← Continue Shopping</a>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div style="font-size:4rem">🛒</div>
+    <h3>Your cart is empty</h3>
+    <p>Add some fresh atta to get started!</p>
+    <a href="{{ url_for('shop.products') }}" class="btn-primary">Shop Now</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const _csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+async function changeQty(variantId, delta, unitPrice) {
+  const qtyEl = document.getElementById('qty-' + variantId);
+  if (!qtyEl) return;
+  const newQty = Math.max(0, (parseInt(qtyEl.textContent) || 0) + delta);
+  await setQty(variantId, newQty, unitPrice);
+}
+
+async function removeItem(variantId) {
+  await setQty(variantId, 0, 0);
+}
+
+async function setQty(variantId, qty, unitPrice) {
+  const resp = await fetch('/update-cart', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
+    body:    JSON.stringify({ variant_id: variantId, qty }),
+  });
+  const data = await resp.json();
+  if (data.success) {
+    if (qty <= 0) {
+      document.getElementById('ci-' + variantId)?.remove();
+    } else {
+      const qtyEl   = document.getElementById('qty-'   + variantId);
+      const priceEl = document.getElementById('price-' + variantId);
+      if (qtyEl)   qtyEl.textContent   = qty;
+      if (priceEl) priceEl.textContent = '₹' + Math.round(qty * unitPrice);
+    }
+    const sub = document.getElementById('sumSubtotal');
+    const del = document.getElementById('sumDelivery');
+    const tot = document.getElementById('sumTotal');
+    if (sub) sub.textContent = '₹' + Math.round(data.subtotal);
+    if (del) del.textContent = data.delivery_charge > 0 ? '₹' + Math.round(data.delivery_charge) : 'FREE';
+    if (tot) tot.textContent = '₹' + Math.round(data.grand_total);
+    updateCartBadge(data.cart_count);
+    if (data.cart_count === 0) location.reload();
+  }
+}
+
+async function buyNowFromCart(variantId, qty) {
+  try {
+    const resp = await fetch('/buy-now', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
+      body:    JSON.stringify({ variant_id: variantId, qty }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      window.location.href = data.redirect;
+    } else {
+      showToast(data.message || 'Could not start checkout. Try again.', 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+</script>
+{% endblock %}

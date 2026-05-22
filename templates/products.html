@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Products – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>Our Products</h1>
+    <p>Freshly milled, stone-ground chakki atta for every family.</p>
+  </div>
+</div>
+
+<section class="products-section bg-cream">
+  <div class="container">
+    <!-- Category Filter -->
+    <div class="cat-filter">
+      <a href="{{ url_for('shop.products') }}" class="cat-pill {% if not active_cat %}active{% endif %}">All</a>
+      {% for cat in categories %}
+      <a href="{{ url_for('shop.products', category=cat.slug) }}" class="cat-pill {% if active_cat and active_cat.id == cat.id %}active{% endif %}">{{ cat.name }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="products-grid">
+      {% for product in products %}
+      <div class="product-card scroll-reveal">
+        <a href="{{ url_for('shop.product_detail', slug=product.slug) }}">
+          <div class="product-img">
+            {% set cover = product.cover_image_url %}
+            {% if cover %}
+            <img src="{{ cover }}" alt="{{ product.name }}" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+            {{ product.emoji }}
+            {% endif %}
+            {% if product.badge %}
+            <span class="product-badge" style="background:{{ product.badge_color }}">{{ product.badge }}</span>
+            {% endif %}
+          </div>
+        </a>
+        <div class="product-body">
+          <div class="product-name">{{ product.name }}</div>
+          <div class="product-desc">{{ product.short_desc }}</div>
+          <!-- Variant Selector -->
+          <div class="variant-selector">
+            {% for v in product.variants %}
+            <button class="variant-btn {% if v.is_default %}active{% endif %}"
+              data-variant="{{ v.id }}" data-price="{{ v.price }}"
+              data-mrp="{{ v.mrp or '' }}" data-discount="{{ v.discount_pct }}"
+              data-product-id="{{ product.id }}"
+              onclick="selectVariant(this, {{ product.id }})">{{ v.size_label }}</button>
+            {% endfor %}
+          </div>
+          {% set dv = product.default_variant %}
+          {% if dv %}
+          <div class="product-footer">
+            <div class="product-price" id="price-{{ product.id }}">
+              ₹{{ dv.price | int }}
+              <span>/ {{ dv.size_label }}</span>
+              {% if dv.discount_pct > 0 %}
+              <s class="mrp">₹{{ dv.mrp | int }}</s>
+              {% endif %}
+            </div>
+            <button class="add-btn" id="addbtn-{{ product.id }}"
+              onclick="addToCartFromCard({{ product.id }})">
+              + Cart
+            </button>
+          </div>
+          {% if dv.discount_pct > 0 %}
+          <div class="product-discount-tag" id="disc-{{ product.id }}">
+            {{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}
+          </div>
+          {% else %}
+          <div class="product-discount-tag" id="disc-{{ product.id }}" style="display:none"></div>
+          {% endif %}
+          <button class="btn-buy-now-sm" onclick="buyNowFromCard({{ product.id }})">
+            ⚡ Buy Now
+          </button>
+          {% endif %}
+          <a href="{{ url_for('shop.product_detail', slug=product.slug) }}" class="view-link">View Details →</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if not products %}
+    <div class="empty-state">
+      <div style="font-size:3rem">🌾</div>
+      <h3>No products found</h3>
+      <a href="{{ url_for('shop.products') }}">View all products</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const _csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const selectedVariants = {};
+
+function selectVariant(btn, productId) {
+  const btns = document.querySelectorAll(`[data-product-id="${productId}"]`);
+  btns.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const price    = parseFloat(btn.dataset.price);
+  const mrp      = btn.dataset.mrp ? parseFloat(btn.dataset.mrp) : null;
+  const discount = parseInt(btn.dataset.discount) || 0;
+  const label    = btn.textContent.trim();
+
+  selectedVariants[productId] = { id: btn.dataset.variant, price };
+
+  let priceHTML = '₹' + Math.round(price) + ' <span>/ ' + label + '</span>';
+  if (mrp && discount > 0) {
+    priceHTML += ' <s class="mrp">₹' + Math.round(mrp) + '</s>';
+  }
+  document.getElementById('price-' + productId).innerHTML = priceHTML;
+
+  const discEl = document.getElementById('disc-' + productId);
+  if (discEl) {
+    if (mrp && discount > 0) {
+      discEl.textContent = discount + '% off · Save ₹' + Math.round(mrp - price);
+      discEl.style.display = '';
+    } else {
+      discEl.style.display = 'none';
+    }
+  }
+}
+
+function _resolveVariant(productId) {
+  const sv = selectedVariants[productId];
+  if (sv) return sv.id;
+  const btn = document.querySelector(`[data-product-id="${productId}"].active`);
+  return btn ? btn.dataset.variant : null;
+}
+
+function addToCartFromCard(productId) {
+  const variantId = _resolveVariant(productId);
+  if (variantId) addToCart(variantId, 1);
+}
+
+async function buyNowFromCard(productId) {
+  const variantId = _resolveVariant(productId);
+  if (!variantId) return;
+  try {
+    const resp = await fetch('/buy-now', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
+      body:    JSON.stringify({ variant_id: parseInt(variantId), qty: 1 }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      window.location.href = data.redirect;
+    } else {
+      showToast(data.message || 'Could not start checkout. Try again.', 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+</script>
+{% endblock %}

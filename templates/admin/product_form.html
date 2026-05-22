@@ -1,0 +1,552 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit' if product else 'New' }} Product{% endblock %}
+{% block page_title %}{{ 'Edit' if product else 'New' }} Product{% endblock %}
+{% block admin_content %}
+<div style="max-width:920px">
+  <a href="{{ url_for('admin.products') }}" style="color:var(--muted);text-decoration:none;font-size:0.85rem">← Back to Products</a>
+
+  <form method="POST" enctype="multipart/form-data" style="margin-top:1.5rem" id="productForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- ══ BASIC INFO ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Basic Info</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Product Name *</label>
+          <input type="text" name="name" id="nameInput" value="{{ product.name if product else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label>URL Slug *</label>
+          <input type="text" name="slug" id="slugInput" value="{{ product.slug if product else '' }}" required>
+          <div class="form-hint">/products/slug</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category_id">
+            <option value="">— No Category —</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Emoji (fallback icon)</label>
+          <input type="text" name="emoji" value="{{ product.emoji if product else '🌾' }}" maxlength="4">
+          <div class="form-hint">Shown when no image is uploaded</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Sort Order</label>
+          <input type="number" name="sort_order" value="{{ product.sort_order if product else 0 }}">
+        </div>
+        <div style="display:flex;gap:2rem;align-items:center;padding-top:1.5rem">
+          <div class="checkbox-row">
+            <input type="checkbox" name="is_active" id="is_active" {% if not product or product.is_active %}checked{% endif %}>
+            <label for="is_active">Active (visible)</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" name="is_featured" id="is_featured" {% if product and product.is_featured %}checked{% endif %}>
+            <label for="is_featured">Featured on homepage</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PRODUCT IMAGE GALLERY ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">
+        Product Images
+        <span style="font-weight:400;font-size:0.78rem;color:var(--muted);text-transform:none;letter-spacing:0">
+          — up to 10 images · drag to reorder · ★ = cover image
+        </span>
+      </div>
+
+      {% if product %}
+      <!-- Gallery manager (edit mode: AJAX-powered) -->
+      <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.75rem;margin-bottom:1rem">
+        {% set gallery = product.all_gallery_images %}
+        {% for img in gallery %}
+        <div class="gal-item {% if not img.is_active %}gal-hidden{% endif %}" data-id="{{ img.id }}" id="gi-{{ img.id }}"
+             style="border-radius:10px;overflow:hidden;border:2px solid {% if img.is_primary %}var(--gold){% else %}var(--border){% endif %};position:relative;background:var(--surface2);cursor:grab;user-select:none">
+          <img src="{{ img.url }}" alt="{{ img.alt_text or product.name }}"
+               style="width:100%;aspect-ratio:1;object-fit:cover;display:block;opacity:{% if img.is_active %}1{% else %}0.35{% endif %}">
+          <!-- Overlay controls -->
+          <div class="gal-controls" style="position:absolute;top:0;left:0;right:0;padding:0.35rem;display:flex;gap:0.3rem;justify-content:flex-end;background:linear-gradient(to bottom,rgba(0,0,0,0.55),transparent)">
+            {% if img.is_primary %}
+            <span title="Cover image" style="background:var(--gold);color:#fff;border:none;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;cursor:default">★</span>
+            {% else %}
+            <button type="button" title="Set as cover" onclick="setPrimary({{ img.id }})"
+              style="background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem" title="Set as cover image">★</button>
+            {% endif %}
+            <button type="button" onclick="toggleActive({{ img.id }})"
+              style="background:rgba(0,0,0,0.5);color:{% if img.is_active %}#4ade80{% else %}#f87171{% endif %};border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.75rem"
+              title="{% if img.is_active %}Hide image{% else %}Show image{% endif %}" id="toggle-{{ img.id }}">
+              {% if img.is_active %}●{% else %}○{% endif %}
+            </button>
+            <button type="button" onclick="deleteImg({{ img.id }})"
+              style="background:rgba(192,57,43,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem">✕</button>
+          </div>
+          {% if img.is_primary %}
+          <div style="position:absolute;bottom:0;left:0;right:0;background:var(--gold);color:#fff;font-size:0.62rem;font-weight:700;text-align:center;padding:0.18rem;letter-spacing:0.06em">COVER</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <!-- Empty placeholder if no gallery images -->
+        {% if not gallery %}
+        <div id="galEmpty" style="grid-column:1/-1;padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;border:2px dashed var(--border);border-radius:10px">
+          No images yet. Upload your first image below.
+          {% if product.image_filename %}
+          <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--gold)">Legacy image detected — migrate it by uploading it again, or it will show as fallback.</div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Upload drop zone -->
+      <div id="dropZone" style="border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface2)"
+           onclick="document.getElementById('galleryInput').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="handleDrop(event)">
+        <div style="font-size:1.8rem;margin-bottom:0.4rem">📷</div>
+        <div style="color:var(--text);font-size:0.85rem;font-weight:500">Click or drag images here to upload</div>
+        <div style="color:var(--muted);font-size:0.75rem;margin-top:0.25rem">JPG, PNG, WEBP · max 8MB each · up to 10 total</div>
+        <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" onchange="uploadImages(this.files)">
+      </div>
+      <div id="uploadProgress" style="display:none;margin-top:0.75rem">
+        <div style="background:var(--surface2);border-radius:6px;height:6px;overflow:hidden">
+          <div id="uploadBar" style="background:var(--gold);height:100%;width:0%;transition:width 0.3s"></div>
+        </div>
+        <div id="uploadMsg" style="font-size:0.78rem;color:var(--muted);margin-top:0.4rem"></div>
+      </div>
+
+      {% else %}
+      <!-- New product: direct file input, will be handled post-create -->
+      <div class="form-group">
+        <label>Upload Images (you can add more after saving)</label>
+        <input type="file" name="product_images_new" id="productImagesNew" accept="image/*" multiple onchange="previewNewImages(this)">
+        <div class="form-hint">Select up to 10 images. First image becomes the cover.</div>
+      </div>
+      <div id="newImgPreviewGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0.5rem;margin-top:0.75rem"></div>
+      <!-- Legacy single image field kept for compatibility -->
+      <input type="hidden" name="product_image_compat" value="1">
+      {% endif %}
+
+      <!-- Legacy single image field (hidden, kept for DB compat) -->
+      {% if product and product.image_filename %}
+      <div style="margin-top:0.75rem;padding:0.6rem 0.9rem;background:rgba(200,146,42,0.08);border-radius:8px;font-size:0.78rem;color:var(--muted)">
+        Legacy image: <code style="color:var(--gold)">{{ product.image_filename }}</code> — still used as fallback if gallery is empty.
+        <label style="margin-left:0.75rem;cursor:pointer">
+          <input type="checkbox" name="remove_image" value="1"> Remove legacy image
+        </label>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ══ BADGE & LABELS ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Badge & Labels</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Badge Text</label>
+          <input type="text" name="badge" value="{{ product.badge if product else '' }}" placeholder="e.g. Bestseller, Organic, New">
+        </div>
+        <div class="form-group">
+          <label>Badge Color</label>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input type="color" name="badge_color" id="badgeColorPicker" value="{{ product.badge_color if product else '#4A7C59' }}" style="width:44px;height:38px;padding:2px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:transparent">
+            <input type="text" id="badgeColorText" value="{{ product.badge_color if product else '#4A7C59' }}" style="flex:1" placeholder="#4A7C59" onchange="document.getElementById('badgeColorPicker').value=this.value">
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Offer Label</label>
+          <input type="text" name="offer_label" value="{{ product.offer_label or '' }}" placeholder="e.g. 🎉 Limited Time: Buy 2 Get 10% Off">
+        </div>
+        <div class="form-group">
+          <label>Stock Label</label>
+          <input type="text" name="stock_label" value="{{ product.stock_label or '' }}" placeholder="e.g. ✅ In Stock · Ships Today">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Weight Label</label>
+          <input type="text" name="weight_label" value="{{ product.weight_label or '' }}" placeholder="e.g. Available in 5kg, 10kg, 25kg, 50kg">
+        </div>
+        <div class="form-group">
+          <label>Size Selector Label</label>
+          <input type="text" name="size_label_text" value="{{ product.size_label_text or '' }}" placeholder="e.g. Choose Your Pack Size:">
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PRODUCT COPY ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Product Copy</div>
+      <div class="form-group">
+        <label>Short Description <span style="color:var(--muted);font-weight:400">(shown in product cards)</span></label>
+        <input type="text" name="short_desc" value="{{ product.short_desc or '' }}" placeholder="One-line tagline shown in product cards">
+      </div>
+      <div class="form-group">
+        <label>Subtitle / Tagline <span style="color:var(--muted);font-weight:400">(product detail page, under name)</span></label>
+        <input type="text" name="subtitle" value="{{ product.subtitle or '' }}" placeholder="e.g. MP Sharbati wheat · Soft rotis · Daily use">
+      </div>
+      <div class="form-group">
+        <label>Full Description</label>
+        <textarea name="description" rows="4" placeholder="Detailed product description shown on product detail page">{{ product.description or '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Highlights / Features <span style="color:var(--muted);font-weight:400">(one per line → bullet points on detail page)</span></label>
+        <textarea name="highlights" rows="5" placeholder="Stone-ground on traditional chakki&#10;No chemicals or additives&#10;High fibre, rich in nutrients&#10;Freshly milled within 48 hours">{{ product.highlights or '' }}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Delivery Text</label>
+          <input type="text" name="delivery_text" value="{{ product.delivery_text or '' }}" placeholder="e.g. 🚚 Free delivery on orders above ₹500">
+        </div>
+        <div class="form-group">
+          <label>Freshness Text</label>
+          <input type="text" name="freshness_text" value="{{ product.freshness_text or '' }}" placeholder="e.g. ✅ Freshness guaranteed · Milled to order">
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PRICING & VARIANTS ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Pricing & Variants</div>
+      <div style="background:rgba(200,146,42,0.08);border-radius:8px;padding:0.7rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);border-left:3px solid var(--gold)">
+        <strong style="color:var(--gold-l)">Pricing Logic:</strong> Enter MRP + Selling Price → discount % auto-calculated. Or enter MRP + Discount % → selling price auto-filled.
+      </div>
+      <div id="variantsContainer">
+        {% if product and product.variants %}
+          {% for v in product.variants %}
+          <div class="variant-row" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.8rem">
+            <input type="hidden" name="variant_id[]" value="{{ v.id }}">
+            <div style="display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr 0.8fr auto;gap:0.7rem;align-items:end">
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Size / Pack Label</label><input type="text" name="variant_label[]" value="{{ v.size_label }}" required></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">MRP (₹)</label><input type="number" name="variant_mrp[]" value="{{ v.mrp or '' }}" step="0.01" placeholder="0.00" class="mrp-input" oninput="calcDiscount(this)"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Selling Price (₹) *</label><input type="number" name="variant_price[]" value="{{ v.price }}" step="0.01" required placeholder="0.00" class="price-input" oninput="calcDiscountFromPrice(this)"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Discount %</label><input type="number" name="variant_discount_display[]" value="{{ v.discount_pct if v.discount_pct else '' }}" step="1" placeholder="auto" class="discount-display" oninput="calcPriceFromDiscount(this)" min="0" max="99" style="color:var(--green);font-weight:600"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Stock</label><input type="number" name="variant_stock[]" value="{{ v.stock_qty }}"></div>
+              <button type="button" onclick="this.closest('.variant-row').remove()" style="margin-bottom:0.2rem;padding:0.5rem 0.7rem;background:rgba(192,57,43,0.15);border:none;color:#e74c3c;border-radius:6px;cursor:pointer;font-size:1rem">✕</button>
+            </div>
+            <div style="margin-top:0.5rem">
+              <div class="form-group" style="margin:0;max-width:200px"><label style="font-size:0.75rem">Weight (kg) — info only</label><input type="number" name="variant_weight[]" value="{{ v.weight_kg or '' }}" step="0.1" placeholder="e.g. 5"></div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="variant-row" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.8rem">
+            <input type="hidden" name="variant_id[]" value="">
+            <div style="display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr 0.8fr auto;gap:0.7rem;align-items:end">
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Size / Pack Label</label><input type="text" name="variant_label[]" placeholder="e.g. 5 kg"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">MRP (₹)</label><input type="number" name="variant_mrp[]" step="0.01" placeholder="0.00" class="mrp-input" oninput="calcDiscount(this)"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Selling Price (₹) *</label><input type="number" name="variant_price[]" step="0.01" placeholder="0.00" class="price-input" oninput="calcDiscountFromPrice(this)"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Discount %</label><input type="number" name="variant_discount_display[]" step="1" placeholder="auto" class="discount-display" oninput="calcPriceFromDiscount(this)" min="0" max="99" style="color:var(--green);font-weight:600"></div>
+              <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Stock</label><input type="number" name="variant_stock[]" value="100"></div>
+              <button type="button" onclick="this.closest('.variant-row').remove()" style="margin-bottom:0.2rem;padding:0.5rem 0.7rem;background:rgba(192,57,43,0.15);border:none;color:#e74c3c;border-radius:6px;cursor:pointer;font-size:1rem">✕</button>
+            </div>
+            <div style="margin-top:0.5rem"><div class="form-group" style="margin:0;max-width:200px"><label style="font-size:0.75rem">Weight (kg)</label><input type="number" name="variant_weight[]" step="0.1" placeholder="e.g. 5"></div></div>
+          </div>
+        {% endif %}
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="addVariantRow()">+ Add Size / Variant</button>
+    </div>
+
+    <!-- ══ RELATED PRODUCTS ══ -->
+    <div class="card" style="margin-bottom:1.5rem">
+      <div class="card-title">Related Products — "You May Also Like"</div>
+      <div class="form-hint" style="margin-bottom:1rem">Select products to show. Leave empty to auto-show same-category products.</div>
+      {% if all_products %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.6rem">
+        {% for rp in all_products %}
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;border:1.5px solid {% if rp.id in selected_related_ids %}var(--gold){% else %}var(--border){% endif %};border-radius:8px;cursor:pointer;background:{% if rp.id in selected_related_ids %}rgba(200,146,42,0.08){% else %}transparent{% endif %};transition:all 0.15s" class="related-label">
+          <input type="checkbox" name="related_products[]" value="{{ rp.id }}" {% if rp.id in selected_related_ids %}checked{% endif %} onchange="toggleRelatedStyle(this)" style="accent-color:var(--gold)">
+          <span style="font-size:1.1rem">
+            {% set cover = rp.cover_image_url %}
+            {% if cover %}
+            <img src="{{ cover }}" style="width:28px;height:28px;border-radius:4px;object-fit:cover;vertical-align:middle">
+            {% else %}
+            {{ rp.emoji }}
+            {% endif %}
+          </span>
+          <span style="font-size:0.82rem;font-weight:500;line-height:1.3;color:var(--text)">{{ rp.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="color:var(--muted);font-size:0.85rem">No other products available yet.</div>
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:1rem">
+      <button type="submit" class="btn btn-gold">{{ 'Update Product' if product else 'Create Product' }}</button>
+      <a href="{{ url_for('admin.products') }}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+const PRODUCT_ID = {{ product.id if product else 'null' }};
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+// ── Slug auto-generate ──
+{% if not product %}
+document.getElementById('nameInput').addEventListener('input', function() {
+  document.getElementById('slugInput').value = this.value.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-');
+});
+{% endif %}
+
+// ── Badge color sync ──
+document.getElementById('badgeColorPicker').addEventListener('input', function() {
+  document.getElementById('badgeColorText').value = this.value;
+});
+
+// ── Pricing calculations ──
+function getRow(el) { return el.closest('.variant-row'); }
+function calcDiscountFromPrice(priceInput) {
+  const row = getRow(priceInput);
+  const mrp = parseFloat(row.querySelector('.mrp-input').value);
+  const price = parseFloat(priceInput.value);
+  const d = row.querySelector('.discount-display');
+  if (mrp > 0 && price > 0 && mrp > price) d.value = Math.round((1 - price/mrp)*100);
+  else d.value = '';
+}
+function calcDiscount(mrpInput) {
+  const row = getRow(mrpInput);
+  const mrp = parseFloat(mrpInput.value);
+  const price = parseFloat(row.querySelector('.price-input').value);
+  const d = row.querySelector('.discount-display');
+  if (mrp > 0 && price > 0 && mrp > price) d.value = Math.round((1 - price/mrp)*100);
+}
+function calcPriceFromDiscount(discInput) {
+  const row = getRow(discInput);
+  const mrp = parseFloat(row.querySelector('.mrp-input').value);
+  const disc = parseFloat(discInput.value);
+  const priceInput = row.querySelector('.price-input');
+  if (mrp > 0 && disc >= 0 && disc < 100) priceInput.value = (mrp*(1-disc/100)).toFixed(2);
+}
+
+// ── Add variant row ──
+function addVariantRow() {
+  const c = document.getElementById('variantsContainer');
+  const div = document.createElement('div');
+  div.className = 'variant-row';
+  div.style = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.8rem';
+  div.innerHTML = `
+    <input type="hidden" name="variant_id[]" value="">
+    <div style="display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr 0.8fr auto;gap:0.7rem;align-items:end">
+      <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Size / Pack Label</label><input type="text" name="variant_label[]" placeholder="e.g. 10 kg"></div>
+      <div class="form-group" style="margin:0"><label style="font-size:0.75rem">MRP (₹)</label><input type="number" name="variant_mrp[]" step="0.01" placeholder="0.00" class="mrp-input" oninput="calcDiscount(this)"></div>
+      <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Selling Price (₹) *</label><input type="number" name="variant_price[]" step="0.01" placeholder="0.00" class="price-input" oninput="calcDiscountFromPrice(this)"></div>
+      <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Discount %</label><input type="number" name="variant_discount_display[]" step="1" placeholder="auto" class="discount-display" oninput="calcPriceFromDiscount(this)" min="0" max="99" style="color:var(--green);font-weight:600"></div>
+      <div class="form-group" style="margin:0"><label style="font-size:0.75rem">Stock</label><input type="number" name="variant_stock[]" value="100"></div>
+      <button type="button" onclick="this.closest('.variant-row').remove()" style="margin-bottom:0.2rem;padding:0.5rem 0.7rem;background:rgba(192,57,43,0.15);border:none;color:#e74c3c;border-radius:6px;cursor:pointer;font-size:1rem">✕</button>
+    </div>
+    <div style="margin-top:0.5rem"><div class="form-group" style="margin:0;max-width:200px"><label style="font-size:0.75rem">Weight (kg)</label><input type="number" name="variant_weight[]" step="0.1" placeholder="e.g. 10"></div></div>`;
+  c.appendChild(div);
+}
+
+// ── Related products style toggle ──
+function toggleRelatedStyle(checkbox) {
+  const label = checkbox.closest('label');
+  label.style.borderColor = checkbox.checked ? 'var(--gold)' : 'var(--border)';
+  label.style.background = checkbox.checked ? 'rgba(200,146,42,0.08)' : 'transparent';
+}
+
+// ── New product image previews ──
+function previewNewImages(input) {
+  const grid = document.getElementById('newImgPreviewGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  Array.from(input.files).slice(0, 10).forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const div = document.createElement('div');
+      div.style = 'position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;border:2px solid ' + (i === 0 ? 'var(--gold)' : 'var(--border)');
+      div.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">` +
+        (i === 0 ? '<div style="position:absolute;bottom:0;left:0;right:0;background:var(--gold);color:#fff;font-size:0.6rem;text-align:center;padding:0.15rem;font-weight:700">COVER</div>' : '');
+      grid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── AJAX gallery management (edit mode only) ──
+{% if product %}
+async function apiCall(url, method='POST', body=null) {
+  const opts = { method, headers: { 'X-CSRFToken': CSRF_TOKEN } };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+function showGalMsg(msg, ok=true) {
+  const el = document.getElementById('uploadMsg');
+  if (el) { el.textContent = msg; el.style.color = ok ? 'var(--green)' : '#e74c3c'; }
+}
+
+async function uploadImages(files) {
+  if (!files.length) return;
+  const formData = new FormData();
+  Array.from(files).forEach(f => formData.append('images', f));
+
+  const prog = document.getElementById('uploadProgress');
+  const bar  = document.getElementById('uploadBar');
+  prog.style.display = 'block';
+  bar.style.width = '30%';
+  showGalMsg('Uploading…');
+
+  try {
+    const r = await fetch(`/admin/products/${PRODUCT_ID}/images/upload`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN },
+      body: formData,
+    });
+    bar.style.width = '100%';
+    const data = await r.json();
+    if (data.success && data.added.length) {
+      data.added.forEach(img => appendGalleryItem(img));
+      const empty = document.getElementById('galEmpty');
+      if (empty) empty.remove();
+      showGalMsg(`✓ ${data.added.length} image${data.added.length>1?'s':''} uploaded`);
+    }
+    if (data.errors && data.errors.length) {
+      showGalMsg(data.errors.join('; '), false);
+    }
+  } catch {
+    showGalMsg('Upload failed. Please try again.', false);
+  }
+  setTimeout(() => { prog.style.display='none'; bar.style.width='0%'; }, 3000);
+  document.getElementById('galleryInput').value = '';
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+  const files = event.dataTransfer.files;
+  if (files.length) uploadImages(files);
+}
+
+function appendGalleryItem(img) {
+  const grid = document.getElementById('galleryGrid');
+  const div = document.createElement('div');
+  div.className = 'gal-item';
+  div.id = `gi-${img.id}`;
+  div.dataset.id = img.id;
+  div.style = `border-radius:10px;overflow:hidden;border:2px solid ${img.is_primary?'var(--gold)':'var(--border)'};position:relative;background:var(--surface2);cursor:grab;user-select:none`;
+  div.innerHTML = `
+    <img src="${img.url}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">
+    <div style="position:absolute;top:0;left:0;right:0;padding:0.35rem;display:flex;gap:0.3rem;justify-content:flex-end;background:linear-gradient(to bottom,rgba(0,0,0,0.55),transparent)">
+      <button type="button" onclick="setPrimary(${img.id})" style="background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem" title="Set as cover">★</button>
+      <button type="button" id="toggle-${img.id}" onclick="toggleActive(${img.id})" style="background:rgba(0,0,0,0.5);color:#4ade80;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.75rem" title="Hide image">●</button>
+      <button type="button" onclick="deleteImg(${img.id})" style="background:rgba(192,57,43,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.8rem">✕</button>
+    </div>`;
+  grid.appendChild(div);
+  initDrag(div);
+}
+
+async function setPrimary(imgId) {
+  const data = await apiCall(`/admin/products/images/${imgId}/set-primary`);
+  if (data.success) {
+    document.querySelectorAll('.gal-item').forEach(el => {
+      el.style.borderColor = 'var(--border)';
+      const coverBadge = el.querySelector('.cover-badge');
+      if (coverBadge) coverBadge.remove();
+    });
+    const el = document.getElementById(`gi-${imgId}`);
+    if (el) {
+      el.style.borderColor = 'var(--gold)';
+      const badge = document.createElement('div');
+      badge.className = 'cover-badge';
+      badge.style = 'position:absolute;bottom:0;left:0;right:0;background:var(--gold);color:#fff;font-size:0.62rem;font-weight:700;text-align:center;padding:0.18rem;letter-spacing:0.06em';
+      badge.textContent = 'COVER';
+      el.appendChild(badge);
+    }
+    showGalMsg('✓ Cover image updated');
+  }
+}
+
+async function toggleActive(imgId) {
+  const data = await apiCall(`/admin/products/images/${imgId}/toggle-active`);
+  if (data.success) {
+    const el  = document.getElementById(`gi-${imgId}`);
+    const btn = document.getElementById(`toggle-${imgId}`);
+    const img = el?.querySelector('img');
+    if (data.is_active) {
+      if (img) img.style.opacity = '1';
+      if (btn) { btn.style.color = '#4ade80'; btn.textContent = '●'; btn.title = 'Hide image'; }
+      if (el) el.classList.remove('gal-hidden');
+    } else {
+      if (img) img.style.opacity = '0.35';
+      if (btn) { btn.style.color = '#f87171'; btn.textContent = '○'; btn.title = 'Show image'; }
+      if (el) el.classList.add('gal-hidden');
+    }
+  }
+}
+
+async function deleteImg(imgId) {
+  if (!confirm('Delete this image? This cannot be undone.')) return;
+  const data = await apiCall(`/admin/products/images/${imgId}/delete`);
+  if (data.success) {
+    const el = document.getElementById(`gi-${imgId}`);
+    if (el) el.remove();
+    const remaining = document.querySelectorAll('.gal-item').length;
+    if (remaining === 0) {
+      const grid = document.getElementById('galleryGrid');
+      grid.innerHTML = '<div id="galEmpty" style="grid-column:1/-1;padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;border:2px dashed var(--border);border-radius:10px">No images. Upload images below.</div>';
+    }
+  }
+}
+
+// ── Drag-to-reorder ──
+let dragSrc = null;
+
+function initDrag(el) {
+  el.setAttribute('draggable', true);
+  el.addEventListener('dragstart', function(e) {
+    dragSrc = this;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => this.style.opacity = '0.4', 0);
+  });
+  el.addEventListener('dragend', function() {
+    this.style.opacity = '';
+    saveOrder();
+  });
+  el.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.style.outline = '2px solid var(--gold)';
+  });
+  el.addEventListener('dragleave', function() { this.style.outline = ''; });
+  el.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.style.outline = '';
+    if (dragSrc !== this) {
+      const grid = document.getElementById('galleryGrid');
+      const items = [...grid.querySelectorAll('.gal-item')];
+      const srcIdx  = items.indexOf(dragSrc);
+      const destIdx = items.indexOf(this);
+      if (srcIdx < destIdx) this.after(dragSrc);
+      else this.before(dragSrc);
+    }
+  });
+}
+
+async function saveOrder() {
+  const ids = [...document.querySelectorAll('.gal-item')].map(el => parseInt(el.dataset.id));
+  await apiCall('/admin/products/images/reorder', 'POST', { ids });
+}
+
+// Init drag on existing items
+document.querySelectorAll('.gal-item').forEach(initDrag);
+{% endif %}
+</script>
+{% endblock %}

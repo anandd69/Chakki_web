@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_number }} - {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:40px auto;padding:0 20px;">
+  <a href="{{ url_for('user.dashboard') }}" style="color:#4A7C59;text-decoration:none;font-weight:500;margin-bottom:20px;display:inline-block;">← Back to Dashboard</a>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+    <h1 style="font-size:32px;color:#1a1a1a;">Order #{{ order.order_number }}</h1>
+    <span style="padding:8px 16px;background:{{ order.status_color }};color:white;border-radius:6px;font-weight:600;text-transform:capitalize;">
+      {{ order.status }}
+    </span>
+  </div>
+
+  <div style="background:white;border-radius:12px;padding:30px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <h2 style="font-size:20px;margin-bottom:20px;color:#333;">Order Items</h2>
+    {% for item in order.items %}
+    <div style="display:flex;justify-content:space-between;padding:15px 0;border-bottom:1px solid #eee;">
+      <div>
+        <p style="font-weight:600;color:#1a1a1a;margin-bottom:5px;">{{ item.product_name }}</p>
+        <p style="color:#666;font-size:14px;">{{ item.variant_label }} × {{ item.quantity }}</p>
+      </div>
+      <p style="font-weight:600;color:#1a1a1a;">₹{{ item.subtotal }}</p>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:20px;padding-top:20px;border-top:2px solid #eee;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <span style="color:#666;">Subtotal</span>
+        <span style="font-weight:600;">₹{{ order.subtotal }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+        <span style="color:#666;">Delivery Charge</span>
+        <span style="font-weight:600;">₹{{ order.delivery_charge }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #eee;">
+        <span style="font-size:18px;font-weight:600;color:#1a1a1a;">Total</span>
+        <span style="font-size:18px;font-weight:600;color:#4A7C59;">₹{{ order.total_amount }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:white;border-radius:12px;padding:30px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <h2 style="font-size:20px;margin-bottom:20px;color:#333;">Delivery Information</h2>
+    <p style="margin-bottom:10px;"><strong>Name:</strong> {{ order.customer_name }}</p>
+    <p style="margin-bottom:10px;"><strong>Phone:</strong> {{ order.customer_phone }}</p>
+    {% if order.customer_email %}
+    <p style="margin-bottom:10px;"><strong>Email:</strong> {{ order.customer_email }}</p>
+    {% endif %}
+    <p style="margin-bottom:10px;"><strong>Address:</strong> {{ order.delivery_address }}</p>
+    {% if order.city %}
+    <p style="margin-bottom:10px;"><strong>City:</strong> {{ order.city }}</p>
+    {% endif %}
+    {% if order.pincode %}
+    <p style="margin-bottom:10px;"><strong>Pincode:</strong> {{ order.pincode }}</p>
+    {% endif %}
+    <p style="margin-bottom:10px;"><strong>Payment Method:</strong> {{ order.payment_method }}</p>
+    <p style="color:#666;font-size:14px;margin-top:20px;">Order placed on {{ order.created_at | ist }}</p>
+  </div>
+
+  {# ── REVIEW SECTION — only for delivered orders ── #}
+  {% if order.status == 'delivered' %}
+  <div style="background:white;border-radius:12px;padding:30px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    {% if order_review %}
+      <h2 style="font-size:20px;margin-bottom:1rem;color:#333;">Your Review</h2>
+      <div style="background:#f9fafb;border-radius:8px;padding:1.2rem;">
+        <div style="color:#F59E0B;font-size:1.3rem;margin-bottom:0.6rem;letter-spacing:2px;">
+          {% for i in range(order_review.rating) %}★{% endfor %}{% for i in range(5 - order_review.rating) %}<span style="opacity:.25">★</span>{% endfor %}
+          <span style="font-size:0.85rem;color:#666;margin-left:8px;">{{ order_review.rating }}/5</span>
+        </div>
+        <p style="color:#333;line-height:1.7;margin-bottom:0.5rem;">{{ order_review.review_text }}</p>
+        <p style="color:#aaa;font-size:0.78rem;">Submitted on {{ order_review.created_at | ist }}</p>
+      </div>
+    {% else %}
+      <h2 style="font-size:20px;margin-bottom:0.4rem;color:#333;">Rate Your Order</h2>
+      <p style="color:#666;font-size:0.9rem;margin-bottom:1.5rem;">How was your experience? Your feedback helps us improve.</p>
+
+      <form method="POST" action="{{ url_for('user.submit_review', order_number=order.order_number) }}" id="reviewForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block;font-weight:600;font-size:0.88rem;margin-bottom:0.6rem;color:#333;">Rating *</label>
+          <div id="starRow" style="display:flex;gap:6px;">
+            {% for i in range(1,6) %}
+            <label class="star-lbl" data-val="{{ i }}" style="cursor:pointer;font-size:2rem;color:#ddd;line-height:1;user-select:none;-webkit-user-select:none;touch-action:manipulation;">
+              <input type="radio" name="rating" value="{{ i }}" style="position:absolute;opacity:0;width:0;height:0;">
+              ★
+            </label>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="rating" id="ratingHidden" required>
+        </div>
+
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block;font-weight:600;font-size:0.88rem;margin-bottom:0.6rem;color:#333;">Your Review *</label>
+          <textarea name="review_text" rows="4" required minlength="10"
+            placeholder="Share your experience — product quality, taste, packaging, delivery speed..."
+            style="width:100%;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;resize:vertical;font-family:inherit;box-sizing:border-box;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='#4A7C59'" onblur="this.style.borderColor='#ddd'"></textarea>
+          <div style="font-size:0.75rem;color:#aaa;margin-top:4px;">Minimum 10 characters</div>
+        </div>
+
+        <button type="submit" id="reviewSubmitBtn"
+          style="padding:12px 28px;background:#4A7C59;color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:background 0.2s;"
+          onmouseover="this.style.background='#3a6349'" onmouseout="this.style.background='#4A7C59'">
+          Submit Review
+        </button>
+      </form>
+
+      <script>
+      (function() {
+        const stars   = document.querySelectorAll('.star-lbl');
+        const hidden  = document.getElementById('ratingHidden');
+        let selected  = 0;
+
+        function paint(upTo) {
+          stars.forEach((s, i) => s.style.color = i < upTo ? '#F59E0B' : '#ddd');
+        }
+
+        stars.forEach((star, idx) => {
+          // Mouse events (desktop)
+          star.addEventListener('mouseenter', () => paint(idx + 1));
+          star.addEventListener('mouseleave', () => paint(selected));
+          star.addEventListener('click', (e) => {
+            e.preventDefault();
+            selected = idx + 1;
+            hidden.value = selected;
+            paint(selected);
+          });
+          // Touch events (mobile)
+          star.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            selected = idx + 1;
+            hidden.value = selected;
+            paint(selected);
+          });
+        });
+
+        document.getElementById('reviewForm').addEventListener('submit', function(e) {
+          if (!selected) {
+            e.preventDefault();
+            alert('Please select a star rating before submitting.');
+          }
+        });
+      })();
+      </script>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

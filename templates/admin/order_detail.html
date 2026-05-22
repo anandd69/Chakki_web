@@ -1,0 +1,103 @@
+{% extends "admin/base.html" %}
+{% block title %}Order {{ order.order_number }}{% endblock %}
+{% block page_title %}Order {{ order.order_number }}{% endblock %}
+{% block admin_content %}
+<div style="max-width:900px;">
+  <a href="{{ url_for('admin.orders') }}" style="color:var(--muted);text-decoration:none;font-size:0.85rem;">← Back to Orders</a>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:1.2rem 0 1.5rem;">
+    <div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--gold-l);">{{ order.order_number }}</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:0.2rem;">
+        Placed {{ order.created_at | ist_full }}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <select id="statusSelect"
+        style="background:{{ order.status_color }}22;color:{{ order.status_color }};border:1px solid {{ order.status_color }}55;
+               border-radius:8px;padding:0.5rem 0.8rem;font-size:0.85rem;font-weight:600;cursor:pointer;outline:none;">
+        {% for s in ['pending','confirmed','processing','shipped','delivered','cancelled'] %}
+        <option value="{{ s }}" {% if order.status == s %}selected{% endif %} style="background:#1A1208;color:#EDE0CC;">{{ s | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+    <!-- Customer Info -->
+    <div class="card">
+      <div class="card-title">Customer</div>
+      <div style="font-size:0.9rem;line-height:1.8;">
+        <div><strong>{{ order.customer_name }}</strong></div>
+        <div>📞 {{ order.customer_phone }}</div>
+        {% if order.customer_email %}<div>✉️ {{ order.customer_email }}</div>{% endif %}
+      </div>
+    </div>
+    <!-- Delivery Info -->
+    <div class="card">
+      <div class="card-title">Delivery Address</div>
+      <div style="font-size:0.9rem;line-height:1.8;color:var(--text);">
+        {{ order.delivery_address }}
+        {% if order.city %}<br>{{ order.city }}{% endif %}
+        {% if order.pincode %} – {{ order.pincode }}{% endif %}
+      </div>
+      <div style="margin-top:0.8rem;font-size:0.85rem;color:var(--muted);">
+        Payment: <strong style="color:var(--text);">{{ order.payment_method }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Items -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title">Items Ordered</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Product</th><th>Size</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th></tr></thead>
+        <tbody>
+          {% for item in order.items %}
+          <tr>
+            <td><strong>{{ item.product_name }}</strong></td>
+            <td>{{ item.variant_label }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ item.unit_price | int }}</td>
+            <td><strong>₹{{ item.subtotal | int }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem;">
+      <div style="font-size:0.9rem;color:var(--muted);">Subtotal: ₹{{ order.subtotal | int }}</div>
+      <div style="font-size:0.9rem;color:var(--muted);">Delivery: {% if order.delivery_charge > 0 %}₹{{ order.delivery_charge | int }}{% else %}FREE{% endif %}</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--gold-l);">Total: ₹{{ order.total_amount | int }}</div>
+    </div>
+  </div>
+
+  {% if order.notes %}
+  <div class="card">
+    <div class="card-title">Notes</div>
+    <p style="font-size:0.9rem;">{{ order.notes }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.getElementById('statusSelect').addEventListener('change', async function() {
+  const resp = await fetch('{{ url_for("admin.update_order_status", oid=order.id) }}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+    },
+    body: JSON.stringify({status: this.value})
+  });
+  const d = await resp.json();
+  if (d.success) {
+    this.style.background  = d.color + '22';
+    this.style.color       = d.color;
+    this.style.borderColor = d.color + '55';
+  }
+});
+</script>
+{% endblock %}

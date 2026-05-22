@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Premium Gallery ─────────────────────────── */
+.pgal-wrap{position:sticky;top:90px}
+.pgal-hero{position:relative;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);aspect-ratio:1;margin-bottom:0.75rem}
+.pgal-hero-img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.35s ease}
+.pgal-hero-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:7rem}
+.pgal-badge{position:absolute;top:1rem;left:1rem;color:#fff;font-size:0.78rem;font-weight:700;padding:0.3rem 0.85rem;border-radius:30px;letter-spacing:0.06em;backdrop-filter:blur(4px)}
+.pgal-counter{position:absolute;bottom:1rem;right:1rem;background:rgba(0,0,0,0.45);color:#fff;font-size:0.72rem;font-weight:600;padding:0.2rem 0.65rem;border-radius:20px;backdrop-filter:blur(4px)}
+.pgal-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#5C3D1E;box-shadow:0 2px 12px rgba(0,0,0,0.15);transition:all 0.2s;z-index:2}
+.pgal-nav:hover{background:#fff;transform:translateY(-50%) scale(1.1);box-shadow:0 4px 20px rgba(0,0,0,0.18)}
+.pgal-prev{left:0.6rem}
+.pgal-next{right:0.6rem}
+/* Thumbnail strip */
+.pgal-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:0.5rem}
+.pgal-thumb{border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:2.5px solid transparent;transition:border-color 0.2s,opacity 0.2s;opacity:0.65;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);flex-shrink:0}
+.pgal-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pgal-thumb.active{border-color:var(--gold);opacity:1}
+.pgal-thumb:hover{opacity:0.9}
+/* Zoom overlay */
+.pgal-zoom{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s}
+.pgal-zoom.open{opacity:1;pointer-events:all}
+.pgal-zoom-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.pgal-zoom-close{position:fixed;top:1.25rem;right:1.25rem;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.5rem;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+.pgal-zoom-close:hover{background:rgba(255,255,255,0.28)}
+.pgal-zoom-nav{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.4rem;width:48px;height:48px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+.pgal-zoom-nav:hover{background:rgba(255,255,255,0.28)}
+.pgal-zoom-prev{left:1rem}
+.pgal-zoom-next{right:1rem}
+/* No images / single image */
+.pgal-single{width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);display:flex;align-items:center;justify-content:center;font-size:7.5rem;margin-bottom:0.75rem}
+.pgal-single img{width:100%;height:100%;object-fit:cover}
+/* Offer/stock labels */
+.pd-offer-label{margin-top:0.75rem;padding:0.5rem 0.9rem;background:linear-gradient(135deg,#fff8e6,#fef3cd);border:1px solid #f0c040;border-radius:8px;font-size:0.82rem;font-weight:600;color:#92650a}
+.pd-stock-label{margin-top:0.4rem;font-size:0.82rem;color:var(--green);font-weight:600}
+@media(max-width:768px){
+  .pgal-wrap{position:static}
+  .pgal-thumbs{grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}
+  .pgal-nav{width:32px;height:32px;font-size:0.85rem}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set gallery = product.gallery_images %}
+{% set has_gallery = gallery|length > 0 %}
+
+<div class="container" style="padding-top:2.5rem;padding-bottom:4rem">
+  <a href="{{ url_for('shop.products') }}" class="back-link">← Back to Products</a>
+
+  <div class="product-detail-grid">
+
+    <!-- ── LEFT: PREMIUM GALLERY ── -->
+    <div class="pgal-wrap" id="pgalWrap">
+      {% if has_gallery %}
+        {% set imgs = gallery %}
+
+        <!-- Hero image -->
+        <div class="pgal-hero" id="pgalHero">
+          <img id="pgalHeroImg"
+               src="{{ imgs[0].url }}"
+               alt="{{ imgs[0].alt_text or product.name }}"
+               class="pgal-hero-img"
+               onclick="openZoom(0)"
+               style="cursor:zoom-in"
+               title="Click to zoom">
+
+          {% if product.badge %}
+          <span class="pgal-badge" style="background:{{ product.badge_color }}">{{ product.badge }}</span>
+          {% endif %}
+
+          {% if imgs|length > 1 %}
+          <button class="pgal-nav pgal-prev" onclick="galNav(-1)" aria-label="Previous">‹</button>
+          <button class="pgal-nav pgal-next" onclick="galNav(1)"  aria-label="Next">›</button>
+          <div class="pgal-counter" id="pgalCounter">1 / {{ imgs|length }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Thumbnail strip -->
+        {% if imgs|length > 1 %}
+        <div class="pgal-thumbs" id="pgalThumbs">
+          {% for img in imgs %}
+          <div class="pgal-thumb {% if loop.first %}active{% endif %}" data-idx="{{ loop.index0 }}" onclick="galGoTo({{ loop.index0 }})">
+            <img src="{{ img.url }}" alt="{{ img.alt_text or product.name }}" loading="lazy">
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Zoom overlay -->
+        <div class="pgal-zoom" id="pgalZoom" onclick="closeZoom(event)">
+          <button class="pgal-zoom-close" onclick="closeZoomBtn()">✕</button>
+          {% if imgs|length > 1 %}
+          <button class="pgal-zoom-nav pgal-zoom-prev" onclick="event.stopPropagation();zoomNav(-1)">‹</button>
+          <button class="pgal-zoom-nav pgal-zoom-next" onclick="event.stopPropagation();zoomNav(1)">›</button>
+          {% endif %}
+          <img id="pgalZoomImg" class="pgal-zoom-img" src="" alt="">
+        </div>
+
+        <!-- Gallery data for JS -->
+        <script>
+        const GALLERY_IMGS = [
+          {% for img in imgs %}
+          { url: "{{ img.url }}", alt: "{{ (img.alt_text or product.name) | e }}" },
+          {% endfor %}
+        ];
+        let galIdx = 0;
+
+        function galGoTo(idx) {
+          galIdx = (idx + GALLERY_IMGS.length) % GALLERY_IMGS.length;
+          const heroImg = document.getElementById('pgalHeroImg');
+          heroImg.style.opacity = '0';
+          setTimeout(() => {
+            heroImg.src = GALLERY_IMGS[galIdx].url;
+            heroImg.alt = GALLERY_IMGS[galIdx].alt;
+            heroImg.style.opacity = '1';
+          }, 150);
+          const counter = document.getElementById('pgalCounter');
+          if (counter) counter.textContent = (galIdx+1) + ' / ' + GALLERY_IMGS.length;
+          document.querySelectorAll('.pgal-thumb').forEach((t,i) => {
+            t.classList.toggle('active', i === galIdx);
+            if (i === galIdx) t.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
+          });
+        }
+        function galNav(dir) { galGoTo(galIdx + dir); }
+
+        function openZoom(idx) {
+          galIdx = idx;
+          document.getElementById('pgalZoomImg').src = GALLERY_IMGS[idx].url;
+          document.getElementById('pgalZoomImg').alt = GALLERY_IMGS[idx].alt;
+          document.getElementById('pgalZoom').classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeZoom(e) {
+          if (e.target === document.getElementById('pgalZoom')) closeZoomBtn();
+        }
+        function closeZoomBtn() {
+          document.getElementById('pgalZoom').classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        function zoomNav(dir) {
+          galIdx = (galIdx + dir + GALLERY_IMGS.length) % GALLERY_IMGS.length;
+          const zi = document.getElementById('pgalZoomImg');
+          zi.style.opacity = '0.3';
+          setTimeout(() => {
+            zi.src = GALLERY_IMGS[galIdx].url;
+            zi.style.opacity = '1';
+          }, 120);
+          galGoTo(galIdx);
+        }
+        document.addEventListener('keydown', e => {
+          if (!document.getElementById('pgalZoom').classList.contains('open')) return;
+          if (e.key === 'Escape') closeZoomBtn();
+          if (e.key === 'ArrowLeft')  zoomNav(-1);
+          if (e.key === 'ArrowRight') zoomNav(1);
+        });
+        </script>
+
+      {% else %}
+        <!-- No gallery: single image or emoji fallback -->
+        <div class="pgal-single">
+          {% if product.image_url %}
+          <img src="{{ product.image_url }}" alt="{{ product.name }}">
+          {% else %}
+          {{ product.emoji }}
+          {% endif %}
+        </div>
+        {% if product.badge %}
+        <span style="display:inline-block;margin-bottom:0.5rem;color:#fff;font-size:0.78rem;font-weight:700;padding:0.3rem 0.85rem;border-radius:30px;letter-spacing:0.06em;background:{{ product.badge_color }}">{{ product.badge }}</span>
+        {% endif %}
+      {% endif %}
+
+      {% if product.offer_label %}
+      <div class="pd-offer-label">{{ product.offer_label }}</div>
+      {% endif %}
+      {% if product.stock_label %}
+      <div class="pd-stock-label">{{ product.stock_label }}</div>
+      {% endif %}
+    </div>
+
+    <!-- ── RIGHT: PRODUCT INFO ── -->
+    <div class="pd-info">
+      {% if product.category %}
+      <div class="pd-cat">{{ product.category.name }}</div>
+      {% endif %}
+
+      <h1 class="pd-title">{{ product.name }}</h1>
+
+      {% if product.subtitle %}
+      <p class="pd-subtitle">{{ product.subtitle }}</p>
+      {% elif product.short_desc %}
+      <p class="pd-subtitle">{{ product.short_desc }}</p>
+      {% endif %}
+
+      {% if product.description %}
+      <p class="pd-desc">{{ product.description }}</p>
+      {% endif %}
+
+      <!-- Highlights -->
+      {% if product.highlights_list %}
+      <ul class="pd-highlights">
+        {% for h in product.highlights_list %}
+        <li>{{ h }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if product.weight_label %}
+      <div class="pd-weight-label">{{ product.weight_label }}</div>
+      {% endif %}
+
+      <!-- Variant selector -->
+      <div class="pd-variants">
+        <div class="pd-variants-label">{{ product.size_label_text or 'Select Size:' }}</div>
+        <div class="pd-variant-btns" id="variantBtns">
+          {% for v in variants %}
+          <button class="variant-btn-lg {% if v.is_default %}active{% endif %}"
+            data-id="{{ v.id }}" data-price="{{ v.price }}"
+            data-mrp="{{ v.mrp or '' }}" data-discount="{{ v.discount_pct }}"
+            data-label="{{ v.size_label }}"
+            onclick="selectPdVariant(this)">
+            {{ v.size_label }}
+            {% if v.discount_pct > 0 %}<small>{{ v.discount_pct }}% off</small>{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Price row -->
+      {% set dv = variants[0] if variants else None %}
+      <div class="pd-price-row">
+        <div class="pd-price" id="pdPrice">₹{{ dv.price | int if dv else 0 }}</div>
+        {% if dv and dv.mrp %}
+        <div class="pd-mrp" id="pdMrp">MRP <s>₹{{ dv.mrp | int }}</s></div>
+        {% else %}
+        <div class="pd-mrp" id="pdMrp" style="display:none"></div>
+        {% endif %}
+        {% if dv and dv.discount_pct > 0 %}
+        <div class="pd-discount" id="pdDiscount">{{ dv.discount_pct }}% off</div>
+        {% else %}
+        <div class="pd-discount" id="pdDiscount" style="display:none"></div>
+        {% endif %}
+      </div>
+      {% if dv and dv.mrp and dv.discount_pct > 0 %}
+      <div class="pd-savings" id="pdSavings">You save ₹{{ (dv.mrp - dv.price) | int }} on this order</div>
+      {% else %}
+      <div class="pd-savings" id="pdSavings" style="display:none"></div>
+      {% endif %}
+
+      <!-- Qty + Add to Cart -->
+      <div class="pd-cart-row">
+        <div class="qty-selector">
+          <button onclick="changeQty(-1)">−</button>
+          <input type="number" id="pdQty" value="1" min="1" max="20" readonly>
+          <button onclick="changeQty(1)">+</button>
+        </div>
+        <button class="btn-primary pd-cart-btn" id="pdAddBtn" onclick="pdAddToCart()">
+          🛒 Add to Cart
+        </button>
+      </div>
+      <button class="btn-buy-now" id="pdBuyNowBtn" onclick="pdBuyNow()">⚡ Buy Now</button>
+
+      <!-- Meta info -->
+      <div class="pd-meta">
+        {% if product.delivery_text %}
+        <div>{{ product.delivery_text }}</div>
+        {% else %}
+        <div>🚚 Free delivery on orders above ₹{{ settings.get('free_delivery_above','500') }}</div>
+        {% endif %}
+        {% if product.freshness_text %}
+        <div>{{ product.freshness_text }}</div>
+        {% else %}
+        <div>✅ Freshness guaranteed</div>
+        {% endif %}
+        {% if settings.get('contact_phone') %}
+        <div>📞 {{ settings.get('contact_phone') }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RELATED PRODUCTS ── -->
+  {% if related %}
+  <div class="related-section">
+    <h2>You May Also Like</h2>
+    <div class="products-grid">
+      {% for p in related %}
+      <div class="product-card">
+        <a href="{{ url_for('shop.product_detail', slug=p.slug) }}">
+          <div class="product-img">
+            {% set cover = p.cover_image_url %}
+            {% if cover %}
+            <img src="{{ cover }}" alt="{{ p.name }}" style="width:100%;height:100%;object-fit:cover">
+            {% else %}
+            {{ p.emoji }}
+            {% endif %}
+            {% if p.badge %}
+            <span class="product-badge" style="background:{{ p.badge_color }}">{{ p.badge }}</span>
+            {% endif %}
+          </div>
+        </a>
+        <div class="product-body">
+          <div class="product-name">{{ p.name }}</div>
+          {% if p.short_desc %}<div class="product-desc">{{ p.short_desc }}</div>{% endif %}
+          {% set dv = p.default_variant %}
+          {% if dv %}
+          <div class="product-footer">
+            <div class="product-price">
+              ₹{{ dv.price | int }}<span>/ {{ dv.size_label }}</span>
+              {% if dv.discount_pct > 0 %}<s class="mrp">₹{{ dv.mrp | int }}</s>{% endif %}
+            </div>
+            <button class="add-btn" onclick="addToCart({{ dv.id }}, 1)">+ Cart</button>
+          </div>
+          {% if dv.discount_pct > 0 %}
+          <div class="product-discount-tag">{{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}</div>
+          {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const _csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+let currentVariantId = {{ variants[0].id if variants else 0 }};
+
+function selectPdVariant(btn) {
+  document.querySelectorAll('.variant-btn-lg').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentVariantId = parseInt(btn.dataset.id);
+  const price    = parseFloat(btn.dataset.price);
+  const mrp      = btn.dataset.mrp ? parseFloat(btn.dataset.mrp) : null;
+  const discount = parseInt(btn.dataset.discount) || 0;
+  document.getElementById('pdPrice').textContent = '₹' + Math.round(price);
+  const mrpEl = document.getElementById('pdMrp');
+  if (mrp) { mrpEl.innerHTML = 'MRP <s>₹' + Math.round(mrp) + '</s>'; mrpEl.style.display = ''; }
+  else { mrpEl.style.display = 'none'; }
+  const discEl = document.getElementById('pdDiscount');
+  if (discount > 0) { discEl.textContent = discount + '% off'; discEl.style.display = ''; }
+  else { discEl.style.display = 'none'; }
+  const savingsEl = document.getElementById('pdSavings');
+  if (mrp && discount > 0) {
+    savingsEl.textContent = 'You save ₹' + Math.round(mrp - price) + ' on this order';
+    savingsEl.style.display = '';
+  } else { savingsEl.style.display = 'none'; }
+}
+
+function changeQty(delta) {
+  const inp = document.getElementById('pdQty');
+  inp.value = Math.max(1, Math.min(20, parseInt(inp.value) + delta));
+}
+
+function pdAddToCart() {
+  const qty = parseInt(document.getElementById('pdQty').value);
+  addToCart(currentVariantId, qty);
+}
+
+async function pdBuyNow() {
+  const qty = parseInt(document.getElementById('pdQty').value);
+  const btn = document.getElementById('pdBuyNowBtn');
+  btn.textContent = '⏳ Processing…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/buy-now', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
+      body:    JSON.stringify({ variant_id: currentVariantId, qty }),
+    });
+    const data = await resp.json();
+    if (data.success) { window.location.href = data.redirect; return; }
+    showToast(data.message || 'Could not start checkout.', 'error');
+  } catch { showToast('Network error.', 'error'); }
+  btn.textContent = '⚡ Buy Now';
+  btn.disabled = false;
+}
+</script>
+{% endblock %}

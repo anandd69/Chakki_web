@@ -1,0 +1,74 @@
+{% extends "admin/base.html" %}
+{% block title %}Customer Reviews{% endblock %}
+{% block page_title %}Customer Reviews{% endblock %}
+{% block admin_content %}
+<div class="card">
+  {% if reviews %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date (IST)</th>
+          <th>Order</th>
+          <th>Customer</th>
+          <th>Rating</th>
+          <th>Review</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reviews %}
+        <tr id="rev-{{ r.id }}">
+          <td style="font-size:0.78rem;white-space:nowrap;color:var(--muted)">{{ r.created_at | ist }}</td>
+          <td>
+            <a href="{{ url_for('admin.order_detail', oid=r.order_id) }}"
+               style="color:var(--gold-l);font-weight:600;font-size:0.82rem">
+              {{ r.order.order_number }}
+            </a>
+          </td>
+          <td style="font-size:0.85rem">
+            <div><strong>{{ r.user.full_name or r.user.email }}</strong></div>
+            <div style="color:var(--muted);font-size:0.75rem">{{ r.user.email }}</div>
+          </td>
+          <td style="white-space:nowrap">
+            <span style="color:#F59E0B;letter-spacing:2px;font-size:1rem">
+              {% for i in range(r.rating) %}★{% endfor %}{% for i in range(5 - r.rating) %}<span style="opacity:.25">★</span>{% endfor %}
+            </span>
+            <span style="color:var(--muted);font-size:0.75rem;display:block">{{ r.rating }}/5</span>
+          </td>
+          <td style="max-width:340px;font-size:0.85rem;line-height:1.6;color:var(--text)">{{ r.review_text }}</td>
+          <td>
+            <button class="btn btn-sm"
+              style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3)"
+              onclick="deleteReview({{ r.id }})">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:4rem 2rem;color:var(--muted)">
+    <div style="font-size:3.5rem;margin-bottom:1rem">⭐</div>
+    <h3 style="margin-bottom:0.5rem;color:var(--text)">No Reviews Yet</h3>
+    <p>Customer reviews appear here after they rate their delivered orders.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+async function deleteReview(id) {
+  if (!confirm('Delete this review permanently?')) return;
+  const resp = await fetch('/admin/reviews/' + id + '/delete', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content }
+  });
+  const d = await resp.json();
+  if (d.success) {
+    const row = document.getElementById('rev-' + id);
+    if (row) row.remove();
+  }
+}
+</script>
+{% endblock %}

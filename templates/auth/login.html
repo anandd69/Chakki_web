@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Login – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+{% block content %}
+<div style="max-width:420px;margin:80px auto;padding:0 20px;">
+  <div style="background:#fff;border-radius:12px;padding:40px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="font-size:26px;margin-bottom:8px;color:#1a1a1a;">Welcome Back</h1>
+    <p style="color:#666;margin-bottom:28px;font-size:0.9rem;">Sign in to your account</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div style="padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:0.88rem;
+          background:{% if cat=='danger' %}#fef2f2{% elif cat=='success' %}#f0fdf4{% else %}#eff6ff{% endif %};
+          color:{% if cat=='danger' %}#dc2626{% elif cat=='success' %}#16a34a{% else %}#2563eb{% endif %};
+          border:1px solid {% if cat=='danger' %}#fecaca{% elif cat=='success' %}#bbf7d0{% else %}#bfdbfe{% endif %};">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="margin-bottom:18px;">
+        <label style="display:block;margin-bottom:6px;font-weight:500;color:#333;font-size:0.9rem;">Email</label>
+        <input type="email" name="email" value="{{ request.form.get('email','') }}" required
+               style="width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:6px;font-size:15px;outline:none;transition:border-color 0.2s;"
+               onfocus="this.style.borderColor='#4A7C59'" onblur="this.style.borderColor='#ddd'">
+      </div>
+      <div style="margin-bottom:18px;">
+        <label style="display:block;margin-bottom:6px;font-weight:500;color:#333;font-size:0.9rem;">Password</label>
+        <input type="password" name="password" required
+               style="width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:6px;font-size:15px;outline:none;transition:border-color 0.2s;"
+               onfocus="this.style.borderColor='#4A7C59'" onblur="this.style.borderColor='#ddd'">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:flex;align-items:center;cursor:pointer;gap:8px;">
+          <input type="checkbox" name="remember">
+          <span style="color:#666;font-size:14px;">Remember me</span>
+        </label>
+      </div>
+      <button type="submit" style="width:100%;padding:13px;background:#4A7C59;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;transition:background 0.2s;"
+              onmouseover="this.style.background='#3a6349'" onmouseout="this.style.background='#4A7C59'">
+        Sign In
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:18px;color:#666;font-size:14px;">
+      Don't have an account? <a href="{{ url_for('auth.register') }}" style="color:#4A7C59;font-weight:600;text-decoration:none;">Register</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Login – Chakki Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:#0F0A04;color:#EDE0CC;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+  .login-box{background:#1A1208;border:1px solid rgba(200,146,42,0.2);border-radius:16px;padding:2.5rem;width:100%;max-width:420px;}
+  .brand{font-size:1.4rem;font-weight:700;color:#E8B84B;margin-bottom:0.3rem;}
+  .brand span{color:#fff;font-style:italic;}
+  .subtitle{color:#8A7560;font-size:0.88rem;margin-bottom:2rem;}
+  label{display:block;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8A7560;margin-bottom:0.4rem;}
+  input{width:100%;padding:0.75rem 1rem;background:#251A0C;border:1px solid rgba(200,146,42,0.18);border-radius:8px;color:#EDE0CC;font-family:inherit;font-size:0.9rem;outline:none;transition:border-color 0.2s;margin-bottom:1.2rem;}
+  input:focus{border-color:#C8922A;}
+  .error{background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.3);color:#e74c3c;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.2rem;font-size:0.88rem;}
+  button{width:100%;padding:0.85rem;background:#C8922A;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:0.95rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
+  button:hover{background:#E8B84B;color:#111;}
+  .back{display:block;text-align:center;margin-top:1.2rem;color:#8A7560;font-size:0.82rem;text-decoration:none;}
+  .back:hover{color:#E8B84B;}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="brand">Chakki <span>Admin</span></div>
+  <div class="subtitle">Sign in to manage your store</div>
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label>Username</label>
+      <input type="text" name="username" autocomplete="username" required autofocus>
+    </div>
+    <div>
+      <label>Password</label>
+      <input type="password" name="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit">Sign In →</button>
+  </form>
+  <a href="{{ url_for('shop.home') }}" class="back">← Back to Store</a>
+</div>
+</body>
+</html>

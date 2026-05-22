@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}My Addresses – {{ settings.get('site_name','Chakki Premium') }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:3rem 0 5rem">
+
+  <div class="addr-page-header">
+    <div>
+      <h1 class="page-title" style="margin-bottom:0.25rem">My Addresses</h1>
+      <p style="color:var(--gray);font-size:0.9rem">Manage your saved delivery addresses</p>
+    </div>
+    <button type="button" class="btn-primary btn-sm" onclick="openAddrModal()" style="white-space:nowrap">
+      + Add New Address
+    </button>
+  </div>
+
+  <div class="addr-breadcrumb">
+    <a href="{{ url_for('shop.home') }}" class="addr-bc-link">Home</a>
+    <span class="addr-bc-sep">›</span>
+    <a href="{{ url_for('user.dashboard') }}" class="addr-bc-link">My Account</a>
+    <span class="addr-bc-sep">›</span>
+    <span style="color:var(--text)">My Addresses</span>
+  </div>
+
+  <div id="addrGrid" class="{% if addresses %}addr-grid{% else %}addr-empty-wrap{% endif %}">
+    {% if addresses %}
+      {% for addr in addresses %}
+      <div class="addr-page-card {% if addr.is_default %}addr-page-card--default{% endif %}" id="pageAddr{{ addr.id }}">
+        <div class="addr-page-card-top">
+          {% if addr.label %}<span class="addr-page-label-badge">{{ addr.label }}</span>{% endif %}
+          {% if addr.is_default %}<span class="addr-page-default-badge">✓ Default</span>{% endif %}
+        </div>
+        <div class="addr-page-card-body">
+          <p class="addr-page-card-name">{{ addr.full_name }}</p>
+          <p class="addr-page-card-phone">📞 {{ addr.phone }}</p>
+          <p class="addr-page-card-text">
+            {{ addr.address_line }}{% if addr.city %},<br>{{ addr.city }}{% endif %}{% if addr.pincode %} – {{ addr.pincode }}{% endif %}
+          </p>
+        </div>
+        <div class="addr-page-card-actions">
+          <button type="button" class="addr-page-act-btn" onclick="openEditModal({{ addr.id }})">Edit</button>
+          {% if not addr.is_default %}
+          <button type="button" class="addr-page-act-btn" onclick="setDefault({{ addr.id }})">Set Default</button>
+          {% endif %}
+          <button type="button" class="addr-page-act-btn addr-page-act-btn--danger" onclick="deleteAddr({{ addr.id }})">Remove</button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="addr-empty-state">
+        <div class="addr-empty-icon">📍</div>
+        <h3 class="addr-empty-title">No saved addresses yet</h3>
+        <p class="addr-empty-sub">Add a delivery address to make checkout faster.</p>
+        <button type="button" class="btn-primary" onclick="openAddrModal()" style="margin-top:1.5rem">
+          + Add Your First Address
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:2.5rem">
+    <a href="{{ url_for('user.dashboard') }}" class="continue-link" style="display:inline-block">← Back to My Account</a>
+  </div>
+</div>
+
+<!-- ADDRESS MODAL -->
+<div id="addrModalBg" class="addr-modal-overlay" style="display:none" onclick="bgClose(event)">
+  <div class="addr-modal" role="dialog" aria-modal="true" aria-labelledby="addrModalHeading" onclick="event.stopPropagation()">
+    <div class="addr-modal-header">
+      <h3 id="addrModalHeading" class="addr-modal-title">Add New Address</h3>
+      <button type="button" class="addr-modal-close" onclick="closeAddrModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="addr-modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Label <span class="ck-optional">(Home, Office…)</span></label>
+          <input type="text" id="mLabel" placeholder="Home" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Recipient Name <span class="req">*</span></label>
+          <input type="text" id="mName" placeholder="Full name">
+          <span class="field-error" id="merr-full_name"></span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mobile Number <span class="req">*</span></label>
+        <input type="tel" id="mPhone" placeholder="10-digit mobile" maxlength="10">
+        <span class="field-error" id="merr-phone"></span>
+      </div>
+      <div class="form-group">
+        <label>Full Address <span class="req">*</span></label>
+        <textarea id="mAddr" rows="3" placeholder="House/Flat no., Street, Area, Landmark"></textarea>
+        <span class="field-error" id="merr-address_line"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>City</label>
+          <input type="text" id="mCity" placeholder="City">
+        </div>
+        <div class="form-group">
+          <label>PIN Code</label>
+          <input type="text" id="mPin" placeholder="6-digit PIN" maxlength="6">
+          <span class="field-error" id="merr-pincode"></span>
+        </div>
+      </div>
+      <label class="ck-checkbox-label" style="margin-top:0.6rem">
+        <input type="checkbox" id="mDefault" style="accent-color:var(--green)">
+        Set as default address
+      </label>
+    </div>
+    <div class="addr-modal-footer">
+      <button type="button" class="btn-outline-dark" onclick="closeAddrModal()">Cancel</button>
+      <button type="button" class="btn-primary btn-sm" id="mSaveBtn" onclick="saveAddr()">Save Address</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const _csrfToken  = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const _userName   = {{ (user.full_name or '') | tojson }};
+const _userPhone  = {{ (user.phone or '') | tojson }};
+const _hasAddrs   = {{ 'true' if addresses else 'false' }};
+let   _editId     = null;
+
+function apiHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-CSRFToken':  _csrfToken,
+  };
+}
+
+function clearMErrors() {
+  document.querySelectorAll('[id^="merr-"]').forEach(el => el.textContent = '');
+}
+
+function openAddrModal() {
+  _editId = null;
+  document.getElementById('addrModalHeading').textContent = 'Add New Address';
+  document.getElementById('mLabel').value    = '';
+  document.getElementById('mName').value     = _userName;
+  document.getElementById('mPhone').value    = _userPhone;
+  document.getElementById('mAddr').value     = '';
+  document.getElementById('mCity').value     = '';
+  document.getElementById('mPin').value      = '';
+  document.getElementById('mDefault').checked = !_hasAddrs;
+  clearMErrors();
+  document.getElementById('addrModalBg').style.display = 'flex';
+  setTimeout(() => document.getElementById('mName').focus(), 60);
+}
+
+function openEditModal(id) {
+  fetch('/user/addresses', { headers: apiHeaders() })
+    .then(r => r.json())
+    .then(d => {
+      if (!d.success) return;
+      const a = d.addresses.find(x => x.id === id);
+      if (!a) return;
+      _editId = id;
+      document.getElementById('addrModalHeading').textContent = 'Edit Address';
+      document.getElementById('mLabel').value    = a.label    || '';
+      document.getElementById('mName').value     = a.full_name;
+      document.getElementById('mPhone').value    = a.phone;
+      document.getElementById('mAddr').value     = a.address_line;
+      document.getElementById('mCity').value     = a.city     || '';
+      document.getElementById('mPin').value      = a.pincode  || '';
+      document.getElementById('mDefault').checked = a.is_default;
+      clearMErrors();
+      document.getElementById('addrModalBg').style.display = 'flex';
+    })
+    .catch(() => showToast('Could not load address. Try again.', 'error'));
+}
+
+function closeAddrModal() {
+  document.getElementById('addrModalBg').style.display = 'none';
+}
+
+function bgClose(e) {
+  if (e.target === document.getElementById('addrModalBg')) closeAddrModal();
+}
+
+async function saveAddr() {
+  clearMErrors();
+  const btn = document.getElementById('mSaveBtn');
+  btn.textContent = 'Saving…';
+  btn.disabled    = true;
+
+  const payload = {
+    label:        document.getElementById('mLabel').value.trim(),
+    full_name:    document.getElementById('mName').value.trim(),
+    phone:        document.getElementById('mPhone').value.trim(),
+    address_line: document.getElementById('mAddr').value.trim(),
+    city:         document.getElementById('mCity').value.trim(),
+    pincode:      document.getElementById('mPin').value.trim(),
+    is_default:   document.getElementById('mDefault').checked ? 'true' : 'false',
+  };
+
+  const url    = _editId ? `/user/addresses/${_editId}` : '/user/addresses';
+  const method = _editId ? 'PUT' : 'POST';
+
+  try {
+    const resp = await fetch(url, {
+      method,
+      headers: apiHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+
+    if (!data.success) {
+      if (data.errors) {
+        Object.entries(data.errors).forEach(([k, v]) => {
+          const el = document.getElementById('merr-' + k);
+          if (el) el.textContent = v;
+        });
+      } else {
+        showToast(data.message || 'Could not save address.', 'error');
+      }
+      btn.textContent = 'Save Address';
+      btn.disabled    = false;
+      return;
+    }
+
+    closeAddrModal();
+    showToast(_editId ? 'Address updated!' : 'Address saved!', 'success');
+    setTimeout(() => location.reload(), 700);
+  } catch (err) {
+    showToast('Network error. Please try again.', 'error');
+    btn.textContent = 'Save Address';
+    btn.disabled    = false;
+  }
+}
+
+async function deleteAddr(id) {
+  if (!confirm('Remove this saved address?')) return;
+  try {
+    const resp = await fetch(`/user/addresses/${id}`, {
+      method: 'DELETE',
+      headers: apiHeaders(),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Address removed.', 'info');
+      setTimeout(() => location.reload(), 600);
+    } else {
+      showToast(data.message || 'Could not remove. Try again.', 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+
+async function setDefault(id) {
+  try {
+    const resp = await fetch(`/user/addresses/${id}/set-default`, {
+      method: 'POST',
+      headers: apiHeaders(),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Default address updated.', 'success');
+      setTimeout(() => location.reload(), 600);
+    } else {
+      showToast(data.message || 'Could not update. Try again.', 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAddrModal(); });
+</script>
+{% endblock %}
