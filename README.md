@@ -50,13 +50,13 @@ pip install -r requirements.txt
 Create a MySQL database:
 
 ```sql
-CREATE DATABASE chakki_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE chakki_db1 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ### 5. Import database schema
 
 ```bash
-mysql -u root -p chakki_db < database.sql
+mysql -u root -p chakki_db1 < database.sql
 ```
 
 ### 6. Configure environment
@@ -72,7 +72,7 @@ Edit `.env`:
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=your_password
-DB_NAME=chakki_db
+DB_NAME=chakki_db1
 SECRET_KEY=your-secret-key-here
 ```
 
@@ -83,13 +83,6 @@ python app.py
 ```
 
 The application will be available at: `http://localhost:5000`
-
-## Default Credentials
-
-### Admin Panel
-- URL: `/admin/login`
-- Username: `admin`
-- Password: `chakki@2026`
 
 **⚠️ Change the default admin password immediately in production!**
 

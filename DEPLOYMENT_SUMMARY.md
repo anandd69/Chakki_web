@@ -135,11 +135,11 @@ pip install -r requirements.txt
 
 # 2. Create database
 mysql -u root -p
-CREATE DATABASE chakki_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE chakki_db1 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 exit;
 
 # 3. Import schema
-mysql -u root -p chakki_db < database.sql
+mysql -u root -p chakki_db1 < database.sql
 
 # 4. Configure environment
 cp .env.example .env
@@ -149,13 +149,6 @@ cp .env.example .env
 python app.py
 ```
 
-## 🔐 DEFAULT CREDENTIALS
-
-**Admin Panel**: `/admin/login`
-- Username: `admin`
-- Password: `chakki@2026`
-
-**⚠️ CHANGE IMMEDIATELY IN PRODUCTION!**
 
 ## 📊 DATABASE TABLES
 

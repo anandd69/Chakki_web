@@ -83,7 +83,7 @@ def _seed_defaults():
     """Ensure admin exists with a working password. Fix broken placeholder hashes."""
     from werkzeug.security import generate_password_hash
 
-    DEFAULT_PASSWORD = 'chakki@2026'
+    DEFAULT_PASSWORD = 'aatano1'
     DEFAULT_HASH = generate_password_hash(DEFAULT_PASSWORD, method='pbkdf2:sha256')
 
     admin = AdminUser.query.filter_by(username='admin').first()
@@ -96,7 +96,6 @@ def _seed_defaults():
         admin.password_hash = DEFAULT_HASH
         db.session.add(admin)
         db.session.commit()
-        print("✅ Admin created: admin / chakki@2026")
     else:
         is_placeholder = (
             'placeholder' in admin.password_hash or
@@ -105,7 +104,6 @@ def _seed_defaults():
         if is_placeholder:
             admin.password_hash = DEFAULT_HASH
             db.session.commit()
-            print("✅ Admin password reset to default: chakki@2026")
 
     from models import Category, Product, ProductVariant
     if Category.query.count() == 0:
