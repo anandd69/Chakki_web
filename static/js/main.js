@@ -40,7 +40,6 @@ async function addToCart(variantId, qty = 1) {
         const data = await resp.json();
 
         if (resp.status === 401 || data.redirect) {
-            // Not logged in — redirect to login
             showToast('Please log in to add items to cart.', 'error', 2000);
             setTimeout(() => { window.location.href = data.redirect || '/auth/login'; }, 1200);
             return { success: false };
@@ -48,8 +47,7 @@ async function addToCart(variantId, qty = 1) {
 
         if (data.success) {
             updateCartBadge(data.cart_count);
-            showToast(data.message || 'Added to cart! Redirecting...', 'success', 900);
-            // Redirect to cart after brief toast
+            showToast(data.message || 'Added to cart!', 'success', 900);
             setTimeout(() => { window.location.href = '/cart'; }, 950);
         } else {
             showToast(data.message || 'Could not add to cart.', 'error');
@@ -61,7 +59,7 @@ async function addToCart(variantId, qty = 1) {
     }
 }
 
-// addToCartSync: used by quick-order/checkout flows — does NOT redirect to cart
+// addToCartSync: used by checkout flows — does NOT redirect to cart
 async function addToCartSync(variantId, qty = 1) {
     try {
         const resp = await fetch('/add-to-cart', {

@@ -30,7 +30,6 @@
       {% if current_user.is_authenticated and current_user.__class__.__name__ == 'User' %}
       <li><a href="{{ url_for('user.addresses_page') }}">My Addresses</a></li>
       {% endif %}
-      <li><a href="{{ url_for('shop.home') }}#order" class="nav-cta">Order Now</a></li>
     </ul>
     <div class="nav-right">
       {% if current_user.is_authenticated and current_user.__class__.__name__ == 'User' %}
@@ -102,8 +101,8 @@
 
 <!-- STICKY BAR -->
 <div class="sticky-bar" id="stickyBar">
-  <span class="sticky-text">{{ settings.get('sticky_bar_text','🌾 Fresh batch milled today!') | safe }}</span>
-  <a href="{{ url_for('shop.home') }}#order" class="btn-primary btn-sm">Order Now →</a>
+  <span class="sticky-text">{{ settings.get('sticky_bar_text','🌾 <strong>Fresh batch milled today!</strong>') | safe }}</span>
+  <a href="{{ url_for('shop.products') }}" class="btn-primary btn-sm">Shop Now →</a>
 </div>
 
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>

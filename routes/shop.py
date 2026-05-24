@@ -84,10 +84,8 @@ def delivery_calc(subtotal, settings):
 def home():
     ctx = base_context()
     featured     = Product.query.filter_by(is_active=True, is_featured=True).order_by(Product.sort_order).all()
-    all_products = Product.query.filter_by(is_active=True).order_by(Product.sort_order).all()
     ctx.update({
         'products':      featured,
-        'all_products':  all_products,
         'why_cards':     WhyCard.query.filter_by(is_active=True).order_by(WhyCard.sort_order).all(),
         'process_steps': ProcessStep.query.filter_by(is_active=True).order_by(ProcessStep.step_number).all(),
         'testimonials':  Testimonial.query.filter_by(is_active=True).order_by(Testimonial.sort_order).all(),
