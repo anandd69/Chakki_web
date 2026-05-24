@@ -21,13 +21,13 @@
     <div class="products-grid">
       {% for product in products %}
       <div class="product-card scroll-reveal">
-        <a href="{{ url_for('shop.product_detail', slug=product.slug) }}">
+        <a href="{{ url_for('shop.product_detail', slug=product.slug) }}" class="product-img-link">
           <div class="product-img">
             {% set cover = product.cover_image_url %}
             {% if cover %}
-            <img src="{{ cover }}" alt="{{ product.name }}" style="width:100%;height:100%;object-fit:cover">
+            <img src="{{ cover }}" alt="{{ product.name }}">
             {% else %}
-            {{ product.emoji }}
+            <span class="product-emoji">{{ product.emoji }}</span>
             {% endif %}
             {% if product.badge %}
             <span class="product-badge" style="background:{{ product.badge_color }}">{{ product.badge }}</span>
@@ -35,8 +35,10 @@
           </div>
         </a>
         <div class="product-body">
-          <div class="product-name">{{ product.name }}</div>
-          <div class="product-desc">{{ product.short_desc }}</div>
+          <div class="product-body-top">
+            <div class="product-name">{{ product.name }}</div>
+            <div class="product-desc">{{ product.short_desc }}</div>
+          </div>
           <!-- Variant Selector -->
           <div class="variant-selector">
             {% for v in product.variants %}
@@ -47,33 +49,35 @@
               onclick="selectVariant(this, {{ product.id }})">{{ v.size_label }}</button>
             {% endfor %}
           </div>
-          {% set dv = product.default_variant %}
-          {% if dv %}
-          <div class="product-footer">
-            <div class="product-price" id="price-{{ product.id }}">
-              ₹{{ dv.price | int }}
-              <span>/ {{ dv.size_label }}</span>
-              {% if dv.discount_pct > 0 %}
-              <s class="mrp">₹{{ dv.mrp | int }}</s>
-              {% endif %}
+          <div class="product-body-bottom">
+            {% set dv = product.default_variant %}
+            {% if dv %}
+            <div class="product-footer">
+              <div class="product-price" id="price-{{ product.id }}">
+                ₹{{ dv.price | int }}
+                <span>/ {{ dv.size_label }}</span>
+                {% if dv.discount_pct > 0 %}
+                <s class="mrp">₹{{ dv.mrp | int }}</s>
+                {% endif %}
+              </div>
+              <button class="add-btn" id="addbtn-{{ product.id }}"
+                onclick="addToCartFromCard({{ product.id }})">
+                + Cart
+              </button>
             </div>
-            <button class="add-btn" id="addbtn-{{ product.id }}"
-              onclick="addToCartFromCard({{ product.id }})">
-              + Cart
+            {% if dv.discount_pct > 0 %}
+            <div class="product-discount-tag" id="disc-{{ product.id }}">
+              {{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}
+            </div>
+            {% else %}
+            <div class="product-discount-tag" id="disc-{{ product.id }}" style="display:none"></div>
+            {% endif %}
+            <button class="btn-buy-now-sm" onclick="buyNowFromCard({{ product.id }})">
+              ⚡ Buy Now
             </button>
+            {% endif %}
+            <a href="{{ url_for('shop.product_detail', slug=product.slug) }}" class="view-link">View Details →</a>
           </div>
-          {% if dv.discount_pct > 0 %}
-          <div class="product-discount-tag" id="disc-{{ product.id }}">
-            {{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}
-          </div>
-          {% else %}
-          <div class="product-discount-tag" id="disc-{{ product.id }}" style="display:none"></div>
-          {% endif %}
-          <button class="btn-buy-now-sm" onclick="buyNowFromCard({{ product.id }})">
-            ⚡ Buy Now
-          </button>
-          {% endif %}
-          <a href="{{ url_for('shop.product_detail', slug=product.slug) }}" class="view-link">View Details →</a>
         </div>
       </div>
       {% endfor %}

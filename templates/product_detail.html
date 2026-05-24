@@ -5,41 +5,170 @@
 <style>
 /* ── Premium Gallery ─────────────────────────── */
 .pgal-wrap{position:sticky;top:90px}
-.pgal-hero{position:relative;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);aspect-ratio:1;margin-bottom:0.75rem}
-.pgal-hero-img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.35s ease}
+.pgal-hero{
+  position:relative;border-radius:22px;overflow:hidden;
+  background:linear-gradient(145deg,#F9F2E3,#EFE0C2);
+  aspect-ratio:1;margin-bottom:0.65rem;
+  box-shadow:0 4px 24px rgba(92,61,30,.1);
+}
+.pgal-hero-img{
+  width:100%;height:100%;
+  object-fit:contain;object-position:center;
+  display:block;
+  padding:8%;
+  transition:opacity 0.35s ease,transform 0.4s ease;
+}
+.pgal-hero:hover .pgal-hero-img{transform:scale(1.02)}
 .pgal-hero-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:7rem}
-.pgal-badge{position:absolute;top:1rem;left:1rem;color:#fff;font-size:0.78rem;font-weight:700;padding:0.3rem 0.85rem;border-radius:30px;letter-spacing:0.06em;backdrop-filter:blur(4px)}
-.pgal-counter{position:absolute;bottom:1rem;right:1rem;background:rgba(0,0,0,0.45);color:#fff;font-size:0.72rem;font-weight:600;padding:0.2rem 0.65rem;border-radius:20px;backdrop-filter:blur(4px)}
-.pgal-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#5C3D1E;box-shadow:0 2px 12px rgba(0,0,0,0.15);transition:all 0.2s;z-index:2}
-.pgal-nav:hover{background:#fff;transform:translateY(-50%) scale(1.1);box-shadow:0 4px 20px rgba(0,0,0,0.18)}
-.pgal-prev{left:0.6rem}
-.pgal-next{right:0.6rem}
+.pgal-badge{
+  position:absolute;top:1rem;left:1rem;
+  color:#fff;font-size:0.76rem;font-weight:700;
+  padding:0.28rem 0.82rem;border-radius:30px;
+  letter-spacing:0.06em;backdrop-filter:blur(6px);
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.pgal-counter{
+  position:absolute;bottom:0.85rem;right:0.85rem;
+  background:rgba(26,18,8,.5);color:#fff;
+  font-size:0.7rem;font-weight:600;
+  padding:0.18rem 0.6rem;border-radius:20px;
+  backdrop-filter:blur(4px);
+}
+.pgal-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  background:rgba(255,255,255,.93);border:none;border-radius:50%;
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1rem;color:#5C3D1E;
+  box-shadow:0 2px 14px rgba(0,0,0,.15);
+  transition:all 0.2s;z-index:2;
+}
+.pgal-nav:hover{background:#fff;transform:translateY(-50%) scale(1.1);box-shadow:0 4px 20px rgba(0,0,0,.18)}
+.pgal-prev{left:0.65rem}
+.pgal-next{right:0.65rem}
+
 /* Thumbnail strip */
-.pgal-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:0.5rem}
-.pgal-thumb{border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer;border:2.5px solid transparent;transition:border-color 0.2s,opacity 0.2s;opacity:0.65;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);flex-shrink:0}
-.pgal-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.pgal-thumb.active{border-color:var(--gold);opacity:1}
-.pgal-thumb:hover{opacity:0.9}
+.pgal-thumbs{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(64px,1fr));
+  gap:0.5rem;
+}
+.pgal-thumb{
+  border-radius:12px;overflow:hidden;
+  aspect-ratio:1;cursor:pointer;
+  border:2.5px solid transparent;
+  transition:border-color 0.2s,opacity 0.2s,transform 0.2s;
+  opacity:0.6;
+  background:linear-gradient(145deg,#F9F2E3,#EFE0C2);
+  flex-shrink:0;
+}
+.pgal-thumb img{
+  width:100%;height:100%;
+  object-fit:contain;object-position:center;
+  display:block;padding:6%;
+}
+.pgal-thumb.active{border-color:var(--gold);opacity:1;transform:scale(1.03)}
+.pgal-thumb:hover:not(.active){opacity:0.85;transform:scale(1.02)}
+
 /* Zoom overlay */
-.pgal-zoom{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s}
+.pgal-zoom{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.93);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.25s;
+}
 .pgal-zoom.open{opacity:1;pointer-events:all}
-.pgal-zoom-img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
-.pgal-zoom-close{position:fixed;top:1.25rem;right:1.25rem;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.5rem;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
-.pgal-zoom-close:hover{background:rgba(255,255,255,0.28)}
-.pgal-zoom-nav{position:fixed;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.4rem;width:48px;height:48px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
-.pgal-zoom-nav:hover{background:rgba(255,255,255,0.28)}
+.pgal-zoom-img{
+  max-width:88vw;max-height:88vh;
+  object-fit:contain;border-radius:8px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.pgal-zoom-close{
+  position:fixed;top:1.25rem;right:1.25rem;
+  background:rgba(255,255,255,.15);border:none;color:#fff;
+  font-size:1.5rem;width:44px;height:44px;border-radius:50%;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s;
+}
+.pgal-zoom-close:hover{background:rgba(255,255,255,.28)}
+.pgal-zoom-nav{
+  position:fixed;top:50%;transform:translateY(-50%);
+  background:rgba(255,255,255,.15);border:none;color:#fff;
+  font-size:1.4rem;width:48px;height:48px;border-radius:50%;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s;
+}
+.pgal-zoom-nav:hover{background:rgba(255,255,255,.28)}
 .pgal-zoom-prev{left:1rem}
 .pgal-zoom-next{right:1rem}
+
 /* No images / single image */
-.pgal-single{width:100%;aspect-ratio:1;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#F5E6C8,#E8D4A8);display:flex;align-items:center;justify-content:center;font-size:7.5rem;margin-bottom:0.75rem}
-.pgal-single img{width:100%;height:100%;object-fit:cover}
+.pgal-single{
+  width:100%;aspect-ratio:1;border-radius:22px;overflow:hidden;
+  background:linear-gradient(145deg,#F9F2E3,#EFE0C2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:7.5rem;margin-bottom:0.75rem;
+  box-shadow:0 4px 24px rgba(92,61,30,.1);
+}
+.pgal-single img{
+  width:100%;height:100%;
+  object-fit:contain;object-position:center;
+  padding:8%;display:block;
+}
+
 /* Offer/stock labels */
-.pd-offer-label{margin-top:0.75rem;padding:0.5rem 0.9rem;background:linear-gradient(135deg,#fff8e6,#fef3cd);border:1px solid #f0c040;border-radius:8px;font-size:0.82rem;font-weight:600;color:#92650a}
+.pd-offer-label{
+  margin-top:0.75rem;padding:0.5rem 0.9rem;
+  background:linear-gradient(135deg,#fff8e6,#fef3cd);
+  border:1px solid #f0c040;border-radius:8px;
+  font-size:0.82rem;font-weight:600;color:#92650a;
+}
 .pd-stock-label{margin-top:0.4rem;font-size:0.82rem;color:var(--green);font-weight:600}
+
+/* ── Product Detail Info Panel ───────────────────────────── */
+.pd-info{
+  padding-top:0.25rem;
+}
+.pd-info-header{
+  padding-bottom:1.25rem;
+  border-bottom:1px solid #ece0cc;
+  margin-bottom:1.25rem;
+}
+.pd-price-block{
+  background:linear-gradient(135deg,rgba(251,245,233,.8),rgba(245,230,200,.4));
+  border:1px solid #ecdcc8;
+  border-radius:14px;
+  padding:1rem 1.2rem;
+  margin-bottom:1.25rem;
+}
+.pd-savings{
+  font-size:0.8rem;color:var(--green);font-weight:600;
+  background:rgba(74,124,89,.1);
+  padding:0.3rem 0.7rem;border-radius:6px;
+  display:inline-block;margin-top:0.5rem;
+  border:1px solid rgba(74,124,89,.15);
+}
+.pd-cta-block{
+  margin-bottom:1rem;
+}
+.pd-trust-strip{
+  display:flex;flex-wrap:wrap;gap:0.5rem;
+  margin-bottom:1rem;
+}
+.pd-trust-item{
+  display:flex;align-items:center;gap:0.35rem;
+  font-size:0.75rem;color:var(--gray);font-weight:500;
+  background:#fff;border:1px solid #ecdcc8;
+  border-radius:20px;padding:0.25rem 0.65rem;
+}
+
 @media(max-width:768px){
   .pgal-wrap{position:static}
   .pgal-thumbs{grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}
   .pgal-nav{width:32px;height:32px;font-size:0.85rem}
+  .pgal-hero-img{padding:5%}
+  .pgal-single img{padding:5%}
+  .pd-price-block{padding:0.85rem 1rem}
 }
 </style>
 {% endblock %}
@@ -183,17 +312,19 @@
 
     <!-- ── RIGHT: PRODUCT INFO ── -->
     <div class="pd-info">
-      {% if product.category %}
-      <div class="pd-cat">{{ product.category.name }}</div>
-      {% endif %}
+      <div class="pd-info-header">
+        {% if product.category %}
+        <div class="pd-cat">{{ product.category.name }}</div>
+        {% endif %}
 
-      <h1 class="pd-title">{{ product.name }}</h1>
+        <h1 class="pd-title">{{ product.name }}</h1>
 
-      {% if product.subtitle %}
-      <p class="pd-subtitle">{{ product.subtitle }}</p>
-      {% elif product.short_desc %}
-      <p class="pd-subtitle">{{ product.short_desc }}</p>
-      {% endif %}
+        {% if product.subtitle %}
+        <p class="pd-subtitle">{{ product.subtitle }}</p>
+        {% elif product.short_desc %}
+        <p class="pd-subtitle">{{ product.short_desc }}</p>
+        {% endif %}
+      </div>
 
       {% if product.description %}
       <p class="pd-desc">{{ product.description }}</p>
@@ -229,39 +360,50 @@
         </div>
       </div>
 
-      <!-- Price row -->
+      <!-- Price block -->
       {% set dv = variants[0] if variants else None %}
-      <div class="pd-price-row">
-        <div class="pd-price" id="pdPrice">₹{{ dv.price | int if dv else 0 }}</div>
-        {% if dv and dv.mrp %}
-        <div class="pd-mrp" id="pdMrp">MRP <s>₹{{ dv.mrp | int }}</s></div>
+      <div class="pd-price-block">
+        <div class="pd-price-row">
+          <div class="pd-price" id="pdPrice">₹{{ dv.price | int if dv else 0 }}</div>
+          {% if dv and dv.mrp %}
+          <div class="pd-mrp" id="pdMrp">MRP <s>₹{{ dv.mrp | int }}</s></div>
+          {% else %}
+          <div class="pd-mrp" id="pdMrp" style="display:none"></div>
+          {% endif %}
+          {% if dv and dv.discount_pct > 0 %}
+          <div class="pd-discount" id="pdDiscount">{{ dv.discount_pct }}% off</div>
+          {% else %}
+          <div class="pd-discount" id="pdDiscount" style="display:none"></div>
+          {% endif %}
+        </div>
+        {% if dv and dv.mrp and dv.discount_pct > 0 %}
+        <div class="pd-savings" id="pdSavings">You save ₹{{ (dv.mrp - dv.price) | int }} on this order</div>
         {% else %}
-        <div class="pd-mrp" id="pdMrp" style="display:none"></div>
-        {% endif %}
-        {% if dv and dv.discount_pct > 0 %}
-        <div class="pd-discount" id="pdDiscount">{{ dv.discount_pct }}% off</div>
-        {% else %}
-        <div class="pd-discount" id="pdDiscount" style="display:none"></div>
+        <div class="pd-savings" id="pdSavings" style="display:none"></div>
         {% endif %}
       </div>
-      {% if dv and dv.mrp and dv.discount_pct > 0 %}
-      <div class="pd-savings" id="pdSavings">You save ₹{{ (dv.mrp - dv.price) | int }} on this order</div>
-      {% else %}
-      <div class="pd-savings" id="pdSavings" style="display:none"></div>
-      {% endif %}
+
+      <!-- Trust strip -->
+      <div class="pd-trust-strip">
+        <span class="pd-trust-item">🔒 Secure Checkout</span>
+        <span class="pd-trust-item">✅ Freshness Guaranteed</span>
+        <span class="pd-trust-item">🚚 Fast Delivery</span>
+      </div>
 
       <!-- Qty + Add to Cart -->
-      <div class="pd-cart-row">
-        <div class="qty-selector">
-          <button onclick="changeQty(-1)">−</button>
-          <input type="number" id="pdQty" value="1" min="1" max="20" readonly>
-          <button onclick="changeQty(1)">+</button>
+      <div class="pd-cta-block">
+        <div class="pd-cart-row">
+          <div class="qty-selector">
+            <button onclick="changeQty(-1)">−</button>
+            <input type="number" id="pdQty" value="1" min="1" max="20" readonly>
+            <button onclick="changeQty(1)">+</button>
+          </div>
+          <button class="btn-primary pd-cart-btn" id="pdAddBtn" onclick="pdAddToCart()">
+            🛒 Add to Cart
+          </button>
         </div>
-        <button class="btn-primary pd-cart-btn" id="pdAddBtn" onclick="pdAddToCart()">
-          🛒 Add to Cart
-        </button>
+        <button class="btn-buy-now" id="pdBuyNowBtn" onclick="pdBuyNow()">⚡ Buy Now</button>
       </div>
-      <button class="btn-buy-now" id="pdBuyNowBtn" onclick="pdBuyNow()">⚡ Buy Now</button>
 
       <!-- Meta info -->
       <div class="pd-meta">
@@ -273,7 +415,7 @@
         {% if product.freshness_text %}
         <div>{{ product.freshness_text }}</div>
         {% else %}
-        <div>✅ Freshness guaranteed</div>
+        <div>✅ Freshness guaranteed — stone-milled to order</div>
         {% endif %}
         {% if settings.get('contact_phone') %}
         <div>📞 {{ settings.get('contact_phone') }}</div>
@@ -289,13 +431,13 @@
     <div class="products-grid">
       {% for p in related %}
       <div class="product-card">
-        <a href="{{ url_for('shop.product_detail', slug=p.slug) }}">
+        <a href="{{ url_for('shop.product_detail', slug=p.slug) }}" class="product-img-link">
           <div class="product-img">
             {% set cover = p.cover_image_url %}
             {% if cover %}
-            <img src="{{ cover }}" alt="{{ p.name }}" style="width:100%;height:100%;object-fit:cover">
+            <img src="{{ cover }}" alt="{{ p.name }}">
             {% else %}
-            {{ p.emoji }}
+            <span class="product-emoji">{{ p.emoji }}</span>
             {% endif %}
             {% if p.badge %}
             <span class="product-badge" style="background:{{ p.badge_color }}">{{ p.badge }}</span>
@@ -303,21 +445,29 @@
           </div>
         </a>
         <div class="product-body">
-          <div class="product-name">{{ p.name }}</div>
-          {% if p.short_desc %}<div class="product-desc">{{ p.short_desc }}</div>{% endif %}
-          {% set dv = p.default_variant %}
-          {% if dv %}
-          <div class="product-footer">
-            <div class="product-price">
-              ₹{{ dv.price | int }}<span>/ {{ dv.size_label }}</span>
-              {% if dv.discount_pct > 0 %}<s class="mrp">₹{{ dv.mrp | int }}</s>{% endif %}
-            </div>
-            <button class="add-btn" onclick="addToCart({{ dv.id }}, 1)">+ Cart</button>
+          <div class="product-body-top">
+            <div class="product-name">{{ p.name }}</div>
+            {% if p.short_desc %}<div class="product-desc">{{ p.short_desc }}</div>{% endif %}
           </div>
-          {% if dv.discount_pct > 0 %}
-          <div class="product-discount-tag">{{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}</div>
-          {% endif %}
-          {% endif %}
+          <div class="variant-selector" style="min-height:0"></div>
+          <div class="product-body-bottom">
+            {% set dv = p.default_variant %}
+            {% if dv %}
+            <div class="product-footer">
+              <div class="product-price">
+                ₹{{ dv.price | int }}<span>/ {{ dv.size_label }}</span>
+                {% if dv.discount_pct > 0 %}<s class="mrp">₹{{ dv.mrp | int }}</s>{% endif %}
+              </div>
+              <button class="add-btn" onclick="addToCart({{ dv.id }}, 1)">+ Cart</button>
+            </div>
+            {% if dv.discount_pct > 0 %}
+            <div class="product-discount-tag">{{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}</div>
+            {% else %}
+            <div class="product-discount-tag" style="display:none"></div>
+            {% endif %}
+            {% endif %}
+            <a href="{{ url_for('shop.product_detail', slug=p.slug) }}" class="view-link">View Details →</a>
+          </div>
         </div>
       </div>
       {% endfor %}
