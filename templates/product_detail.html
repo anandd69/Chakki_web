@@ -525,8 +525,15 @@ async function pdBuyNow() {
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
       body:    JSON.stringify({ variant_id: currentVariantId, qty }),
     });
+    
+    if (resp.redirected) {
+      window.location.href = resp.url;
+      return;
+    }
+    
     const data = await resp.json();
     if (data.success) { window.location.href = data.redirect; return; }
+    if (data.redirect) { window.location.href = data.redirect; return; }
     showToast(data.message || 'Could not start checkout.', 'error');
   } catch { showToast('Network error.', 'error'); }
   btn.textContent = '⚡ Buy Now';

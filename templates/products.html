@@ -40,6 +40,7 @@
             <div class="product-name">{{ product.name }}</div>
             <div class="product-desc">{{ product.short_desc }}</div>
           </div>
+
           <!-- Variant Selector -->
           <div class="variant-selector">
             {% for v in product.variants %}
@@ -50,6 +51,7 @@
               onclick="selectVariant(this, {{ product.id }})">{{ v.size_label }}</button>
             {% endfor %}
           </div>
+
           <div class="product-body-bottom">
             {% set dv = product.default_variant %}
             {% if dv %}
@@ -60,11 +62,14 @@
                 <s class="mrp">₹{{ dv.mrp | int }}</s>
                 {% endif %}
               </div>
-              <button class="add-btn" id="addbtn-{{ product.id }}"
+
+              <button class="add-btn"
+                id="addbtn-{{ product.id }}"
                 onclick="addToCartFromCard({{ product.id }})">
                 + Cart
               </button>
             </div>
+
             {% if dv.discount_pct > 0 %}
             <div class="product-discount-tag" id="disc-{{ product.id }}">
               {{ dv.discount_pct }}% off · Save ₹{{ (dv.mrp - dv.price) | int }}
@@ -72,11 +77,11 @@
             {% else %}
             <div class="product-discount-tag" id="disc-{{ product.id }}" style="display:none"></div>
             {% endif %}
+
             <button class="btn-buy-now-sm" onclick="buyNowFromCard({{ product.id }})">
               ⚡ Buy Now
             </button>
             {% endif %}
-
           </div>
         </div>
       </div>
@@ -93,6 +98,7 @@
   </div>
 </section>
 {% endblock %}
+
 {% block extra_scripts %}
 <script>
 const _csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -106,17 +112,22 @@ function selectVariant(btn, productId) {
   const price    = parseFloat(btn.dataset.price);
   const mrp      = btn.dataset.mrp ? parseFloat(btn.dataset.mrp) : null;
   const discount = parseInt(btn.dataset.discount) || 0;
-  const label    = btn.textContent.trim();
 
-  selectedVariants[productId] = { id: btn.dataset.variant, price };
+  selectedVariants[productId] = {
+    id: btn.dataset.variant,
+    price
+  };
 
   let priceHTML = '₹' + Math.round(price);
+
   if (mrp && discount > 0) {
     priceHTML += ' <s class="mrp">₹' + Math.round(mrp) + '</s>';
   }
+
   document.getElementById('price-' + productId).innerHTML = priceHTML;
 
   const discEl = document.getElementById('disc-' + productId);
+
   if (discEl) {
     if (mrp && discount > 0) {
       discEl.textContent = discount + '% off · Save ₹' + Math.round(mrp - price);
@@ -129,33 +140,113 @@ function selectVariant(btn, productId) {
 
 function _resolveVariant(productId) {
   const sv = selectedVariants[productId];
+
   if (sv) return sv.id;
+
   const btn = document.querySelector(`[data-product-id="${productId}"].active`);
+
   return btn ? btn.dataset.variant : null;
 }
 
-function addToCartFromCard(productId) {
+function handleAuthRedirect(data) {
+  if (
+    data &&
+    (
+      data.login_required ||
+      data.requires_login ||
+      data.redirect_url ||
+      data.redirect
+    )
+  ) {
+    showToast(data.message || 'Please login first...', 'error');
+
+    setTimeout(() => {
+      window.location.href =
+        data.redirect_url ||
+        data.redirect ||
+        '/login';
+    }, 900);
+
+    return true;
+  }
+
+  return false;
+}
+
+async function addToCartFromCard(productId) {
   const variantId = _resolveVariant(productId);
-  if (variantId) addToCart(variantId, 1);
+
+  if (!variantId) return;
+
+  try {
+    const resp = await fetch('/cart/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': _csrfToken
+      },
+      body: JSON.stringify({
+        variant_id: parseInt(variantId),
+        qty: 1
+      })
+    });
+
+    const data = await resp.json();
+
+    if (handleAuthRedirect(data)) return;
+
+    if (typeof addToCart === 'function') {
+      addToCart(variantId, 1);
+    }
+  } catch (e) {
+    showToast('Please login first...', 'error');
+
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 900);
+  }
 }
 
 async function buyNowFromCard(productId) {
   const variantId = _resolveVariant(productId);
+
   if (!variantId) return;
+
   try {
     const resp = await fetch('/buy-now', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrfToken },
-      body:    JSON.stringify({ variant_id: parseInt(variantId), qty: 1 }),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': _csrfToken
+      },
+      body: JSON.stringify({
+        variant_id: parseInt(variantId),
+        qty: 1
+      })
     });
-    const data = await resp.json();
-    if (data.success) {
-      window.location.href = data.redirect;
-    } else {
-      showToast(data.message || 'Could not start checkout. Try again.', 'error');
+
+    if (resp.redirected) {
+      window.location.href = resp.url;
+      return;
     }
-  } catch {
-    showToast('Network error. Please try again.', 'error');
+
+    const data = await resp.json();
+
+    if (handleAuthRedirect(data)) return;
+
+    if (data.success && data.redirect) {
+      window.location.href = data.redirect;
+      return;
+    }
+
+    showToast(data.message || 'Could not start checkout. Try again.', 'error');
+
+  } catch (e) {
+    showToast('Please login first...', 'error');
+
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 900);
   }
 }
 </script>
