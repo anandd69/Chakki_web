@@ -443,6 +443,7 @@
             <span class="product-badge" style="background:{{ p.badge_color }}">{{ p.badge }}</span>
             {% endif %}
           </div>
+          <div class="product-img-overlay"><span>View Details</span></div>
         </a>
         <div class="product-body">
           <div class="product-body-top">
@@ -455,7 +456,7 @@
             {% if dv %}
             <div class="product-footer">
               <div class="product-price">
-                ₹{{ dv.price | int }}<span>/ {{ dv.size_label }}</span>
+                ₹{{ dv.price | int }}
                 {% if dv.discount_pct > 0 %}<s class="mrp">₹{{ dv.mrp | int }}</s>{% endif %}
               </div>
               <button class="add-btn" onclick="addToCart({{ dv.id }}, 1)">+ Cart</button>
@@ -466,7 +467,7 @@
             <div class="product-discount-tag" style="display:none"></div>
             {% endif %}
             {% endif %}
-            <a href="{{ url_for('shop.product_detail', slug=p.slug) }}" class="view-link">View Details →</a>
+
           </div>
         </div>
       </div>

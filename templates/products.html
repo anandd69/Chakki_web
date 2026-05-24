@@ -33,6 +33,7 @@
             <span class="product-badge" style="background:{{ product.badge_color }}">{{ product.badge }}</span>
             {% endif %}
           </div>
+          <div class="product-img-overlay"><span>View Details</span></div>
         </a>
         <div class="product-body">
           <div class="product-body-top">
@@ -55,7 +56,6 @@
             <div class="product-footer">
               <div class="product-price" id="price-{{ product.id }}">
                 ₹{{ dv.price | int }}
-                <span>/ {{ dv.size_label }}</span>
                 {% if dv.discount_pct > 0 %}
                 <s class="mrp">₹{{ dv.mrp | int }}</s>
                 {% endif %}
@@ -76,7 +76,7 @@
               ⚡ Buy Now
             </button>
             {% endif %}
-            <a href="{{ url_for('shop.product_detail', slug=product.slug) }}" class="view-link">View Details →</a>
+
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ function selectVariant(btn, productId) {
 
   selectedVariants[productId] = { id: btn.dataset.variant, price };
 
-  let priceHTML = '₹' + Math.round(price) + ' <span>/ ' + label + '</span>';
+  let priceHTML = '₹' + Math.round(price);
   if (mrp && discount > 0) {
     priceHTML += ' <s class="mrp">₹' + Math.round(mrp) + '</s>';
   }
