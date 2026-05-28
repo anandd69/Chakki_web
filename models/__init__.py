@@ -126,7 +126,6 @@ class Product(db.Model):
     highlights      = db.Column(db.Text)
     weight_label    = db.Column(db.String(100))
     size_label_text = db.Column(db.String(100))
-    delivery_charge = db.Column(db.Numeric(10, 2), default=0)
     description     = db.Column(db.Text)
     emoji           = db.Column(db.String(10), default='🌾')
     image_filename  = db.Column(db.String(255))

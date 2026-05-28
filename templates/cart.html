@@ -49,6 +49,11 @@
         <span>Delivery</span>
         <span id="sumDelivery">{% if delivery_charge > 0 %}₹{{ delivery_charge | int }}{% else %}FREE{% endif %}</span>
       </div>
+      {% if subtotal < free_delivery_above %}
+      <div class="free-del-hint" id="freeDelHint">
+        Add ₹{{ (free_delivery_above - subtotal) | int }} more for free delivery!
+      </div>
+      {% endif %}
       <div class="summary-total">
         <span>Total</span>
         <span id="sumTotal">₹{{ grand_total | int }}</span>

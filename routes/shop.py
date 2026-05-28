@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from models import (db, Product, ProductVariant, Category, Setting, WhyCard,
                     ProcessStep, Testimonial, FooterLink, Order, OrderItem,
                     Cart, User, UserAddress, generate_order_number)
+from config import Config
 from functools import wraps
 import re
 
@@ -30,15 +31,14 @@ def get_cart():
         v = item.variant
         if v and v.product:
             result[str(item.variant_id)] = {
-                'variant_id':     item.variant_id,
-                'product_id':     v.product_id,
-                'name':           v.product.name,
-                'size':           v.size_label,
-                'price':          float(v.price),
-                'emoji':          v.product.emoji,
-                'image_url':      v.product.cover_image_url,
-                'qty':            item.quantity,
-                'delivery_charge': float(v.product.delivery_charge or 0),
+                'variant_id':    item.variant_id,
+                'product_id':    v.product_id,
+                'name':          v.product.name,
+                'size':          v.size_label,
+                'price':         float(v.price),
+                'emoji':         v.product.emoji,
+                'image_url':     v.product.cover_image_url,
+                'qty':           item.quantity,
             }
     return result
 
@@ -51,13 +51,6 @@ def get_cart_count():
 
 def get_cart_total():
     return sum(i['qty'] * i['price'] for i in get_cart().values())
-
-def get_cart_delivery():
-    """Return the highest delivery charge among all products in the cart."""
-    cart = get_cart()
-    if not cart:
-        return 0.0
-    return max((i.get('delivery_charge', 0.0) for i in cart.values()), default=0.0)
 
 def get_footer_links():
     links = (FooterLink.query
@@ -75,6 +68,17 @@ def base_context():
         'cart_count':   get_cart_count(),
         'footer_links': get_footer_links(),
     }
+
+def delivery_calc(subtotal, settings):
+    try:
+        free_above = float(settings.get('free_delivery_above', 500))
+    except (ValueError, TypeError):
+        free_above = 500.0
+    try:
+        charge = float(settings.get('delivery_charge', Config.DELIVERY_CHARGE))
+    except (ValueError, TypeError):
+        charge = float(Config.DELIVERY_CHARGE)
+    return (0.0 if subtotal >= free_above else charge), free_above
 
 @shop.route('/')
 def home():
@@ -110,6 +114,7 @@ def products():
 def product_detail(slug):
     ctx     = base_context()
     product = Product.query.filter_by(slug=slug, is_active=True).first_or_404()
+    # Use admin-selected related products; fall back to same-category if none set
     related = product.related_products
     if not related:
         related = (Product.query
@@ -167,15 +172,16 @@ def api_variant(variant_id):
 @shop.route('/cart')
 @user_login_required
 def cart():
-    ctx             = base_context()
-    cart_items      = list(get_cart().values())
-    total           = get_cart_total()
-    delivery_charge = get_cart_delivery()
+    ctx        = base_context()
+    cart_items = list(get_cart().values())
+    total      = get_cart_total()
+    delivery_charge, free_above = delivery_calc(total, ctx['settings'])
     ctx.update({
-        'cart_items':      cart_items,
-        'subtotal':        total,
-        'delivery_charge': delivery_charge,
-        'grand_total':     total + delivery_charge,
+        'cart_items':          cart_items,
+        'subtotal':            total,
+        'delivery_charge':     delivery_charge,
+        'grand_total':         total + delivery_charge,
+        'free_delivery_above': free_above,
     })
     return render_template('cart.html', **ctx)
 
@@ -232,8 +238,9 @@ def update_cart():
             cart_item.quantity = qty
         db.session.commit()
 
-    total           = get_cart_total()
-    delivery_charge = get_cart_delivery()
+    total = get_cart_total()
+    s     = Setting.all_dict()
+    delivery_charge, _ = delivery_calc(total, s)
 
     return jsonify({
         'success':         True,
@@ -249,10 +256,10 @@ def checkout():
     if not get_cart():
         flash('Your cart is empty.', 'warning')
         return redirect(url_for('shop.products'))
-    ctx             = base_context()
-    cart_items      = list(get_cart().values())
-    total           = get_cart_total()
-    delivery_charge = get_cart_delivery()
+    ctx        = base_context()
+    cart_items = list(get_cart().values())
+    total      = get_cart_total()
+    delivery_charge, _ = delivery_calc(total, ctx['settings'])
 
     saved_addresses = (UserAddress.query
                        .filter_by(user_id=current_user.id)
@@ -311,23 +318,23 @@ def checkout_single():
         flash('Product no longer available.', 'danger')
         return redirect(url_for('shop.products'))
 
-    qty             = buy_now['qty']
-    price           = float(variant.price)
-    total           = qty * price
-    delivery_charge = float(variant.product.delivery_charge or 0)
+    qty   = buy_now['qty']
+    price = float(variant.price)
+    total = qty * price
 
-    ctx = base_context()
+    ctx        = base_context()
+    s          = ctx['settings']
+    delivery_charge, _ = delivery_calc(total, s)
 
     single_item = {
-        'variant_id':      variant.id,
-        'product_id':      variant.product_id,
-        'name':            variant.product.name,
-        'size':            variant.size_label,
-        'price':           price,
-        'emoji':           variant.product.emoji,
-        'image_url':       variant.product.cover_image_url,
-        'qty':             qty,
-        'delivery_charge': delivery_charge,
+        'variant_id': variant.id,
+        'product_id': variant.product_id,
+        'name':       variant.product.name,
+        'size':       variant.size_label,
+        'price':      price,
+        'emoji':      variant.product.emoji,
+        'image_url':  variant.product.cover_image_url,
+        'qty':        qty,
     }
 
     saved_addresses = (UserAddress.query
@@ -363,13 +370,12 @@ def place_order():
         qty   = buy_now['qty']
         price = float(variant.price)
         items_to_order = [{
-            'variant_id':      variant.id,
-            'product_id':      variant.product_id,
-            'name':            variant.product.name,
-            'size':            variant.size_label,
-            'price':           price,
-            'qty':             qty,
-            'delivery_charge': float(variant.product.delivery_charge or 0),
+            'variant_id': variant.id,
+            'product_id': variant.product_id,
+            'name':       variant.product.name,
+            'size':       variant.size_label,
+            'price':      price,
+            'qty':        qty,
         }]
         subtotal = qty * price
     else:
@@ -403,9 +409,8 @@ def place_order():
     if errors:
         return jsonify({'success': False, 'errors': errors}), 422
 
-    delivery_charge = max(
-        (float(i.get('delivery_charge', 0)) for i in items_to_order), default=0.0
-    )
+    s = Setting.all_dict()
+    delivery_charge, _ = delivery_calc(subtotal, s)
     grand_total = subtotal + delivery_charge
 
     order = Order(
