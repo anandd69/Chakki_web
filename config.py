@@ -32,8 +32,6 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024  # 8 MB max upload
-    FREE_DELIVERY_ABOVE = 500
-    DELIVERY_CHARGE     = 60
     ORDER_PREFIX        = 'CP'
 
 class DevelopmentConfig(Config):

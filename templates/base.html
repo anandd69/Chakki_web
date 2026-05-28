@@ -6,7 +6,7 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{% block title %}{{ settings.get('site_name','Chakki Premium') }}{% endblock %}</title>
 <meta name="description" content="{{ settings.get('meta_description','Pure fresh chakki atta delivered to your door.') }}">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 {% block extra_head %}{% endblock %}
 </head>

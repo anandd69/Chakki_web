@@ -222,6 +222,16 @@
       <div style="background:rgba(200,146,42,0.08);border-radius:8px;padding:0.7rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);border-left:3px solid var(--gold)">
         <strong style="color:var(--gold-l)">Pricing Logic:</strong> Enter MRP + Selling Price → discount % auto-calculated. Or enter MRP + Discount % → selling price auto-filled.
       </div>
+      <div class="form-row" style="margin-bottom:1rem">
+        <div class="form-group">
+          <label>Delivery Charge (₹)</label>
+          <input type="number" name="delivery_charge"
+                 value="{{ (product.delivery_charge | int) if product and product.delivery_charge is not none else 0 }}"
+                 min="0" step="1" placeholder="e.g. 0, 40, 60, 120">
+          <div class="form-hint">Set to 0 for free delivery. Shown to customers at cart &amp; checkout.</div>
+        </div>
+      </div>
+
       <div id="variantsContainer">
         {% if product and product.variants %}
           {% for v in product.variants %}

@@ -136,6 +136,7 @@ def _save_product_fields(p, form, files):
     p.highlights      = form.get('highlights', '').strip() or None
     p.weight_label    = form.get('weight_label', '').strip() or None
     p.size_label_text = form.get('size_label_text', '').strip() or None
+    p.delivery_charge  = float(form.get('delivery_charge') or 0)
     p.description     = form.get('description', '').strip()
     p.emoji           = form.get('emoji', '🌾').strip()
     p.badge           = form.get('badge', '').strip() or None
